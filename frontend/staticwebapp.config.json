@@ -3,27 +3,44 @@
   "routes": [
     {
       "route": "/teacher",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": [
+        "authenticated"
+      ]
     },
     {
       "route": "/student",
-      "allowedRoles": ["anonymous", "authenticated", "student"]
+      "allowedRoles": [
+        "anonymous",
+        "authenticated",
+        "student"
+      ]
     },
     {
       "route": "/dev-config",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
     },
     {
       "route": "/api/auth/roles",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
     },
     {
       "route": "/api/*",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": [
+        "authenticated"
+      ]
     },
     {
       "route": "/*",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
     }
   ],
   "navigationFallback": {
@@ -64,7 +81,7 @@
     "identityProviders": {
       "azureActiveDirectory": {
         "registration": {
-          "openIdIssuer": "https://login.microsoftonline.com/organizations/v2.0",
+          "openIdIssuer": "https://8d7e7129-267c-4ef8-b977-e744f7018b45.ciamlogin.com/8d7e7129-267c-4ef8-b977-e744f7018b45/v2.0",
           "clientIdSettingName": "AAD_CLIENT_ID",
           "clientSecretSettingName": "AAD_CLIENT_SECRET"
         }
@@ -74,7 +91,7 @@
   "globalHeaders": {
     "content-security-policy": "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.azurewebsites.net https://*.signalr.net wss://*.service.signalr.net https://*.table.core.windows.net https://login.microsoftonline.com;",
     "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY", 
+    "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(self), geolocation=(self), microphone=()",

@@ -48,6 +48,13 @@ export async function getUserRoles(
     return {
       status: 200,
       jsonBody: {
+        clientPrincipal: {
+          userId: principal.userId,
+          userDetails: email,
+          identityProvider: principal.identityProvider,
+          userRoles: roles,
+          claims: principal.claims || []
+        },
         userId: principal.userId,
         userDetails: email,
         identityProvider: principal.identityProvider,

@@ -7,9 +7,28 @@ let cachedPrincipal: string | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (increased from 5)
 
+function encodePrincipalBase64(clientPrincipal: unknown): string {
+  const json = JSON.stringify(clientPrincipal);
+
+  if (typeof window !== 'undefined' && typeof window.btoa === 'function') {
+    const utf8Bytes = new TextEncoder().encode(json);
+    let binary = '';
+    for (const byte of utf8Bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return window.btoa(binary);
+  }
+
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(json).toString('base64');
+  }
+
+  throw new Error('No base64 encoder available');
+}
+
 /**
  * Get authentication headers for API requests
- * In production: sends x-client-principal (non-reserved header) from /.auth/me
+ * In production: fetch from /.auth/me and send principal headers for API compatibility
  * In local: sends x-ms-client-principal for emulator compatibility
  */
 export async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -26,12 +45,13 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
       headers['x-ms-client-principal'] = cachedPrincipal;
     } else {
       headers['x-client-principal'] = cachedPrincipal;
+      headers['x-ms-client-principal'] = cachedPrincipal;
     }
     return headers;
   }
 
   if (isLocal) {
-    // Local development - fetch actual user from /api/auth/me
+    // Local development
     try {
       const authResponse = await fetch('/api/auth/me', {
         credentials: 'include',
@@ -41,7 +61,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
       if (authResponse.ok) {
         const authData = await authResponse.json();
         if (authData.clientPrincipal) {
-          const principal = Buffer.from(JSON.stringify(authData.clientPrincipal)).toString('base64');
+          const principal = encodePrincipalBase64(authData.clientPrincipal);
           
           // Cache it
           cachedPrincipal = principal;
@@ -55,7 +75,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
     }
   }
   else {
-    // Production - fetch auth and include non-reserved header
+    // Production
     try {
       const authResponse = await fetch('/.auth/me', {
         credentials: 'include',
@@ -65,12 +85,13 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
       if (authResponse.ok) {
         const authData = await authResponse.json();
         if (authData.clientPrincipal) {
-          const principal = Buffer.from(JSON.stringify(authData.clientPrincipal)).toString('base64');
+          const principal = encodePrincipalBase64(authData.clientPrincipal);
 
           cachedPrincipal = principal;
           cacheTimestamp = now;
 
           headers['x-client-principal'] = principal;
+          headers['x-ms-client-principal'] = principal;
         }
       }
     } catch (error) {
