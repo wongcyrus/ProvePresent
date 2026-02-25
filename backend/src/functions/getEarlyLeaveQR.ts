@@ -4,32 +4,9 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 import * as crypto from 'crypto';
-
-// Inline helper functions
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const roles = principal?.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
 
 function encryptToken(data: any): string {
   const secret = process.env.QR_ENCRYPTION_KEY || 'default-secret-key-change-in-production';
@@ -70,7 +47,7 @@ async function getEarlyLeaveQR(request: HttpRequest, context: InvocationContext)
     }
 
     // Verify session exists
-    const sessionsTable = getTableClient('Sessions');
+    const sessionsTable = getTableClient(TableNames.SESSIONS);
     try {
       await sessionsTable.getEntity('session', sessionId);
     } catch (error: any) {
@@ -84,7 +61,7 @@ async function getEarlyLeaveQR(request: HttpRequest, context: InvocationContext)
     }
 
     // Check if early leave is active for this session
-    const tokensTable = getTableClient('Tokens');
+    const tokensTable = getTableClient(TableNames.TOKENS);
     let earlyLeaveToken: any = null;
     
     try {

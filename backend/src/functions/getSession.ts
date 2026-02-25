@@ -4,8 +4,8 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
-
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 // Inline types
 interface Session {
   partitionKey: string;
@@ -44,49 +44,7 @@ interface Chain {
   lastAt?: number;
 }
 
-// Inline helper functions
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function getUserId(principal: any): string {
-  // Use email (userDetails) as the ID for better readability
-  return principal.userDetails || principal.userId;
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const email = principal.userDetails || '';
-  const emailLower = email.toLowerCase();
-  
-  // Check VTC domain-based roles
-  if (role.toLowerCase() === 'teacher' && emailLower.endsWith('@vtc.edu.hk') && !emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  if (role.toLowerCase() === 'student' && emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  // Fallback to checking userRoles array
-  const roles = principal.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
 // Inline table client creation
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
-
 export async function getSession(
   request: HttpRequest,
   context: InvocationContext
@@ -117,7 +75,7 @@ export async function getSession(
     }
 
     // Get session from storage
-    const sessionsTable = getTableClient('Sessions');
+    const sessionsTable = getTableClient(TableNames.SESSIONS);
     let session: Session;
     
     try {
@@ -142,7 +100,7 @@ export async function getSession(
     }
 
     // Get attendance records
-    const attendanceTable = getTableClient('Attendance');
+    const attendanceTable = getTableClient(TableNames.ATTENDANCE);
     const attendance: AttendanceRecord[] = [];
     const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
     const onlineThreshold = 30; // Consider online if seen in last 30 seconds
@@ -163,7 +121,7 @@ export async function getSession(
     }
 
     // Get chains
-    const chainsTable = getTableClient('Chains');
+    const chainsTable = getTableClient(TableNames.CHAINS);
     const chains: Chain[] = [];
     
     for await (const entity of chainsTable.listEntities({ queryOptions: { filter: `PartitionKey eq '${sessionId}'` } })) {
@@ -176,7 +134,7 @@ export async function getSession(
     });
 
     // Get active tokens to identify current holders
-    const tokensTable = getTableClient('Tokens');
+    const tokensTable = getTableClient(TableNames.TOKENS);
     const activeHolders = new Set<string>();
     
     for await (const token of tokensTable.listEntities({ queryOptions: { filter: `PartitionKey eq '${sessionId}'` } })) {

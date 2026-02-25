@@ -4,41 +4,8 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
-
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function getUserId(principal: any): string {
-  return principal.userDetails || principal.userId;
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const email = principal.userDetails || '';
-  const emailLower = email.toLowerCase();
-  
-  if (role.toLowerCase() === 'student' && emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  const roles = principal.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 
 export async function getStudentQuestions(
   request: HttpRequest,
@@ -76,8 +43,8 @@ export async function getStudentQuestions(
       };
     }
 
-    const questionsTable = getTableClient('QuizQuestions');
-    const responsesTable = getTableClient('QuizResponses');
+    const questionsTable = getTableClient(TableNames.QUIZ_QUESTIONS);
+    const responsesTable = getTableClient(TableNames.QUIZ_RESPONSES);
     const now = Math.floor(Date.now() / 1000);
 
     // Get all pending responses for this student (not answered, not expired)

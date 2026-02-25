@@ -4,23 +4,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-
-// Assign roles based on email domain
-function getRolesFromEmail(email: string): string[] {
-  const roles: string[] = ['authenticated'];
-  
-  if (!email) return roles;
-  
-  const emailLower = email.toLowerCase();
-  
-  if (emailLower.endsWith('@stu.vtc.edu.hk')) {
-    roles.push('student');
-  } else if (emailLower.endsWith('@vtc.edu.hk')) {
-    roles.push('teacher');
-  }
-  
-  return roles;
-}
+import { getRolesFromEmail } from '../utils/auth';
 
 export async function getUserRoles(
   request: HttpRequest,

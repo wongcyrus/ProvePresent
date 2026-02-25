@@ -4,31 +4,8 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
-
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const roles = principal?.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
-
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 export async function clearSession(
   request: HttpRequest,
   context: InvocationContext
@@ -70,7 +47,7 @@ export async function clearSession(
       };
     }
 
-    const sessionsTable = getTableClient('UserSessions');
+    const sessionsTable = getTableClient(TableNames.USER_SESSIONS);
 
     try {
       await sessionsTable.deleteEntity('USERSESSION', email);

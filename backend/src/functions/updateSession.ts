@@ -4,46 +4,8 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
-
-// Inline helper functions
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function getUserId(principal: any): string {
-  return principal.userDetails || principal.userId;
-}
-
-function getRolesFromEmail(email: string): string[] {
-  const roles: string[] = ['authenticated'];
-  if (!email) return roles;
-  
-  const emailLower = email.toLowerCase();
-  
-  if (emailLower.endsWith('@stu.vtc.edu.hk')) {
-    roles.push('student');
-  } else if (emailLower.endsWith('@vtc.edu.hk')) {
-    roles.push('teacher');
-  }
-  
-  return roles;
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage is not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
-
+import { parseUserPrincipal, hasRole, getUserId, getRolesFromEmail } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 interface UpdateSessionRequest {
   classId?: string;
   startAt?: string;
@@ -110,7 +72,7 @@ export async function updateSession(
       };
     }
 
-    const sessionsTable = getTableClient('Sessions');
+    const sessionsTable = getTableClient(TableNames.SESSIONS);
     
     // Verify session exists and belongs to this teacher
     let session: any;

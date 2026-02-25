@@ -4,38 +4,9 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 import { compareSnapshots } from '../utils/snapshotService';
-
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const email = principal.userDetails || '';
-  const emailLower = email.toLowerCase();
-  
-  if (role.toLowerCase() === 'teacher' && emailLower.endsWith('@vtc.edu.hk') && !emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  const roles = principal.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
 
 export async function compareSnapshotsHandler(
   request: HttpRequest,
@@ -94,8 +65,8 @@ export async function compareSnapshotsHandler(
     }
 
     // Get tables
-    const snapshotsTable = getTableClient('AttendanceSnapshots');
-    const scanLogsTable = getTableClient('ScanLogs');
+    const snapshotsTable = getTableClient(TableNames.ATTENDANCE_SNAPSHOTS);
+    const scanLogsTable = getTableClient(TableNames.SCAN_LOGS);
 
     // Verify both snapshots exist
     try {

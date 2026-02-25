@@ -3,20 +3,7 @@
  * Provides SignalR connection information to clients
  */
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const roles = principal?.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
 
 export async function negotiate(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   context.log('SignalR negotiate called');

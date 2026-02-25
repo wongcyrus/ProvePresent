@@ -4,38 +4,8 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
-
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const email = principal.userDetails || principal.userId || '';
-  const emailLower = email.toLowerCase();
-  
-  if (role.toLowerCase() === 'teacher' && emailLower.endsWith('@vtc.edu.hk') && !emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  const roles = principal.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
-
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 export async function getChainHistory(
   request: HttpRequest,
   context: InvocationContext
@@ -73,7 +43,7 @@ export async function getChainHistory(
     }
 
     // Get chain info
-    const chainsTable = getTableClient('Chains');
+    const chainsTable = getTableClient(TableNames.CHAINS);
     let chain;
     try {
       chain = await chainsTable.getEntity(sessionId, chainId);
@@ -88,7 +58,7 @@ export async function getChainHistory(
     }
 
     // Get chain history from ChainHistory table
-    const chainHistoryTable = getTableClient('ChainHistory');
+    const chainHistoryTable = getTableClient(TableNames.CHAIN_HISTORY);
     
     const history: any[] = [];
     for await (const record of chainHistoryTable.listEntities({

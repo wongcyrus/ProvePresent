@@ -5,50 +5,9 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
-
-// Inline helper functions
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function getUserId(principal: any): string {
-  return principal.userDetails || principal.userId;
-}
-
+import { parseUserPrincipal, hasRole, getUserId, getRolesFromEmail } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 // Assign roles based on email domain
-function getRolesFromEmail(email: string): string[] {
-  const roles: string[] = ['authenticated'];
-  if (!email) return roles;
-  
-  const emailLower = email.toLowerCase();
-  
-  // Students: @stu.vtc.edu.hk
-  if (emailLower.endsWith('@stu.vtc.edu.hk')) {
-    roles.push('student');
-  }
-  // Teachers: @vtc.edu.hk (but not @stu.vtc.edu.hk)
-  else if (emailLower.endsWith('@vtc.edu.hk')) {
-    roles.push('teacher');
-  }
-  
-  return roles;
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage is not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
-
 interface DeletionSummary {
   deletedAttendance: number;
   deletedChains: number;
@@ -106,7 +65,7 @@ export async function deleteSession(
       };
     }
 
-    const sessionsTable = getTableClient('Sessions');
+    const sessionsTable = getTableClient(TableNames.SESSIONS);
     
     // Verify session exists and belongs to this teacher
     let session: any;
@@ -180,7 +139,7 @@ export async function deleteSession(
     for (const sid of sessionIdsToDelete) {
       // 1. Delete Attendance records
       try {
-        const attendanceTable = getTableClient('Attendance');
+        const attendanceTable = getTableClient(TableNames.ATTENDANCE);
         for await (const entity of attendanceTable.listEntities({ 
           queryOptions: { filter: `PartitionKey eq '${sid}'` } 
         })) {
@@ -193,7 +152,7 @@ export async function deleteSession(
 
       // 2. Delete Chains
       try {
-        const chainsTable = getTableClient('Chains');
+        const chainsTable = getTableClient(TableNames.CHAINS);
         for await (const entity of chainsTable.listEntities({ 
           queryOptions: { filter: `PartitionKey eq '${sid}'` } 
         })) {
@@ -206,7 +165,7 @@ export async function deleteSession(
 
       // 3. Delete Tokens
       try {
-        const tokensTable = getTableClient('Tokens');
+        const tokensTable = getTableClient(TableNames.TOKENS);
         for await (const entity of tokensTable.listEntities({ 
           queryOptions: { filter: `PartitionKey eq '${sid}'` } 
         })) {
@@ -219,9 +178,9 @@ export async function deleteSession(
 
       // 4. Delete ChainHistory (for all chains in this session)
       try {
-        const chainHistoryTable = getTableClient('ChainHistory');
+        const chainHistoryTable = getTableClient(TableNames.CHAIN_HISTORY);
         // First get all chains for this session to find their chainIds
-        const chainsTable = getTableClient('Chains');
+        const chainsTable = getTableClient(TableNames.CHAINS);
         const chainIds: string[] = [];
         for await (const entity of chainsTable.listEntities({ 
           queryOptions: { filter: `PartitionKey eq '${sid}'` } 
@@ -243,7 +202,7 @@ export async function deleteSession(
 
       // 5. Delete ScanLogs
       try {
-        const scanLogsTable = getTableClient('ScanLogs');
+        const scanLogsTable = getTableClient(TableNames.SCAN_LOGS);
         for await (const entity of scanLogsTable.listEntities({ 
           queryOptions: { filter: `PartitionKey eq '${sid}'` } 
         })) {
@@ -268,7 +227,7 @@ export async function deleteSession(
 
     // 6. Log the deletion
     try {
-      const deletionLogTable = getTableClient('DeletionLog');
+      const deletionLogTable = getTableClient(TableNames.DELETION_LOG);
       const logEntry = {
         partitionKey: new Date().toISOString().split('T')[0],  // Date partition
         rowKey: `${sessionId}_${Date.now()}`,  // Unique row

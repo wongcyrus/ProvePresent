@@ -4,45 +4,8 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
-
-// Inline helper functions
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const email = principal.userDetails || principal.userId || '';
-  const emailLower = email.toLowerCase();
-  
-  // Check VTC domain-based roles
-  if (role.toLowerCase() === 'teacher' && emailLower.endsWith('@vtc.edu.hk') && !emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  if (role.toLowerCase() === 'student' && emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  // Fallback to checking userRoles array
-  const roles = principal.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
-}
-
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 export async function getStudentToken(
   request: HttpRequest,
   context: InvocationContext
@@ -85,8 +48,8 @@ export async function getStudentToken(
     }
 
     const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
-    const tokensTable = getTableClient('Tokens');
-    const chainsTable = getTableClient('Chains');
+    const tokensTable = getTableClient(TableNames.TOKENS);
+    const chainsTable = getTableClient(TableNames.CHAINS);
 
     // Find active token for this student
     const tokens = tokensTable.listEntities({

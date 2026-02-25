@@ -2,35 +2,8 @@
  * Stop Early Leave - REFACTORED (Simplified)
  */
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
-
-function parseUserPrincipal(header: string): any {
-  const decoded = Buffer.from(header, 'base64').toString('utf-8');
-  return JSON.parse(decoded);
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const email = principal.userDetails || '';
-  const emailLower = email.toLowerCase();
-  
-  // Check VTC domain-based roles
-  if (role.toLowerCase() === 'teacher' && emailLower.endsWith('@vtc.edu.hk') && !emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  if (role.toLowerCase() === 'student' && emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  // Fallback to checking userRoles array
-  const roles = principal.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
-function getTableClient(tableName: string): TableClient {
-  return TableClient.fromConnectionString(process.env.AzureWebJobsStorage!, tableName, { allowInsecureConnection: true });
-}
-
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 export async function stopEarlyLeave(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
     const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
@@ -44,7 +17,7 @@ export async function stopEarlyLeave(request: HttpRequest, context: InvocationCo
     }
 
     const sessionId = request.params.sessionId;
-    const sessionsTable = getTableClient('Sessions');
+    const sessionsTable = getTableClient(TableNames.SESSIONS);
     const session = await sessionsTable.getEntity('SESSION', sessionId);
 
     // Update session to stop early leave

@@ -4,7 +4,8 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { TableClient } from '@azure/data-tables';
+import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { getTableClient, TableNames } from '../utils/database';
 import { randomUUID } from 'crypto';
 
 // Inline types
@@ -32,48 +33,6 @@ interface CreateSessionResponse {
   count: number;
   parentSessionId?: string;
   sessionQR?: string;
-}
-
-// Inline helper functions
-function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
-  }
-}
-
-function getUserId(principal: any): string {
-  // Use email (userDetails) as the ID for better readability
-  return principal.userDetails || principal.userId;
-}
-
-function hasRole(principal: any, role: string): boolean {
-  const email = principal.userDetails || '';
-  const emailLower = email.toLowerCase();
-  
-  // Check VTC domain-based roles
-  if (role.toLowerCase() === 'teacher' && emailLower.endsWith('@vtc.edu.hk') && !emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  if (role.toLowerCase() === 'student' && emailLower.endsWith('@stu.vtc.edu.hk')) {
-    return true;
-  }
-  
-  // Fallback to checking userRoles array
-  const roles = principal.userRoles || [];
-  return roles.some((r: string) => r.toLowerCase() === role.toLowerCase());
-}
-
-function getTableClient(tableName: string): TableClient {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    throw new Error('AzureWebJobsStorage not configured');
-  }
-  const isLocal = connectionString.includes("127.0.0.1") || connectionString.includes("localhost");
-  return TableClient.fromConnectionString(connectionString, tableName, { allowInsecureConnection: isLocal });
 }
 
 // Calculate recurring session dates
@@ -172,7 +131,7 @@ export async function createSession(
 
     const teacherId = getUserId(principal);
     const now = new Date().toISOString();
-    const sessionsTable = getTableClient('Sessions');
+    const sessionsTable = getTableClient(TableNames.SESSIONS);
     
     const createdSessionIds: string[] = [];
     let parentSessionId: string | undefined;
