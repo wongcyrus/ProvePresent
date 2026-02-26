@@ -55,6 +55,24 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState<QuizQuestion | null>(null);
+  const [cachedLocation, setCachedLocation] = useState<{ latitude: number; longitude: number; accuracy?: number } | undefined>(undefined);
+  const [cachedLocationAt, setCachedLocationAt] = useState<number>(0);
+
+  const refreshLocationCache = async () => {
+    try {
+      const location = await getCurrentLocation();
+      if (location) {
+        setCachedLocation(location);
+        setCachedLocationAt(Date.now());
+      }
+    } catch {
+      // Best-effort only; scan flow should continue even if location fails
+    }
+  };
+
+  useEffect(() => {
+    refreshLocationCache();
+  }, []);
 
   // Check URL parameters for scan simulation (when clicking QR URL in dev mode)
   /* eslint-disable react-hooks/exhaustive-deps */
@@ -81,8 +99,13 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
 
       // Direct scan without challenge code
       setScanMessage('Processing scan...');
-      
-      const location = await getCurrentLocation();
+      const nowMs = Date.now();
+      const hasFreshCachedLocation = !!cachedLocation && (nowMs - cachedLocationAt) < 60_000;
+      const location = hasFreshCachedLocation ? cachedLocation : undefined;
+
+      if (!hasFreshCachedLocation) {
+        void refreshLocationCache();
+      }
       
       const scanResponse = await fetch(
         `${apiUrl}/sessions/${sessionId}/chains/${chainId}/scan`,

@@ -67,7 +67,7 @@ export default function TeacherPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [qrCodeData, setQrCodeData] = useState<{ sessionId: string; classId: string; type: 'ENTRY' | 'EXIT'; qrDataUrl: string; studentUrl?: string } | null>(null);
+  const [qrCodeData, setQrCodeData] = useState<{ sessionId: string; classId: string; type: 'ENTRY' | 'EXIT'; qrDataUrl: string; studentUrl?: string; refreshIntervalMs?: number } | null>(null);
   const [qrRefreshKey, setQrRefreshKey] = useState(0); // For triggering QR refresh
   
   // For delete confirmation dialog
@@ -238,19 +238,25 @@ export default function TeacherPage() {
           }
         });
         
-        setQrCodeData(prev => prev ? { ...prev, qrDataUrl, studentUrl } : null);
+        setQrCodeData(prev => prev ? {
+          ...prev,
+          qrDataUrl,
+          studentUrl,
+          refreshIntervalMs: typeof data.refreshInterval === 'number' ? data.refreshInterval : prev.refreshIntervalMs
+        } : null);
       } catch (err) {
         console.error('Failed to refresh QR code:', err);
       }
     };
     
-    // Refresh immediately first, then every 10 seconds
+    // Refresh immediately first, then by backend-provided interval
     refreshQR();
-    const interval = setInterval(refreshQR, 10000);
+    const intervalMs = qrCodeData.refreshIntervalMs ?? 10000;
+    const interval = setInterval(refreshQR, intervalMs);
     
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showQRModal, qrCodeData?.sessionId, qrCodeData?.type]);
+  }, [showQRModal, qrCodeData?.sessionId, qrCodeData?.type, qrCodeData?.refreshIntervalMs]);
 
   const handleShowEntryQR = async (session: Session) => {
     try {
@@ -314,7 +320,8 @@ export default function TeacherPage() {
         classId: session.classId,
         type: 'ENTRY',
         qrDataUrl,
-        studentUrl
+        studentUrl,
+        refreshIntervalMs: typeof data.refreshInterval === 'number' ? data.refreshInterval : 10000
       });
       setShowQRModal(true);
     } catch (err) {
@@ -384,7 +391,8 @@ export default function TeacherPage() {
         classId: session.classId,
         type: 'EXIT',
         qrDataUrl,
-        studentUrl
+        studentUrl,
+        refreshIntervalMs: typeof data.refreshInterval === 'number' ? data.refreshInterval : 10000
       });
       setShowQRModal(true);
     } catch (err) {

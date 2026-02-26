@@ -104,7 +104,7 @@ export async function getStudentToken(
         
         if (chain.state === 'ACTIVE' && chain.lastHolder === studentId) {
           // Create new token on-demand
-          const tokenTTL = parseInt(process.env.CHAIN_TOKEN_TTL_SECONDS || '10');
+          const tokenTTL = parseInt(process.env.CHAIN_TOKEN_TTL_SECONDS || '25');
           const newTokenId = generateTokenId();
           const newExpiresAt = now + tokenTTL;
 

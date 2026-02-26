@@ -82,13 +82,14 @@ export async function getEntryQR(
       };
     }
 
-    // Create encrypted token with timestamp (valid for 20 seconds)
+    // Create encrypted token with configurable TTL
     const now = Math.floor(Date.now() / 1000);
+    const tokenTTL = Math.max(5, parseInt(process.env.CHAIN_TOKEN_TTL_SECONDS || '25', 10) || 25);
     const tokenData = {
       sessionId,
       type: 'ENTRY',
       timestamp: now,
-      expiresAt: now + 10 // 10 seconds validity
+      expiresAt: now + tokenTTL
     };
     
     const encryptedToken = encryptToken(tokenData);
@@ -100,7 +101,7 @@ export async function getEntryQR(
         type: 'ENTRY',
         token: encryptedToken,
         expiresAt: tokenData.expiresAt,
-        refreshInterval: 10000 // Refresh every 10 seconds
+        refreshInterval: tokenTTL * 1000
       }
     };
 

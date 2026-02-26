@@ -176,23 +176,33 @@ export async function scanChain(
     const scannerId = studentEmail; // Scanner is the one calling this endpoint
     context.log(`[scanChain] token validated: previousHolder=${previousHolder}, scannerId=${scannerId}, chainState=${(chainData as any).state || 'unknown'}`);
     
-    // Check if scanner was already a holder in THIS specific chain
+    // Check if scanner was already a holder in ANY chain for this session
     try {
-      for await (const record of chainHistoryTable.listEntities({
-        queryOptions: { filter: `PartitionKey eq '${chainId}' and toHolder eq '${scannerId}'` }
-      })) {
-        // Scanner was already a holder in this chain
-        context.warn(`[scanChain] holder reuse blocked: scannerId=${scannerId} was already holder in chain ${chainId}`);
-        return {
-          status: 400,
-          jsonBody: { 
-            error: { 
-              code: 'ALREADY_HOLDER', 
-              message: 'You have already been a holder in this chain',
-              timestamp: now 
-            } 
-          }
-        };
+      // Get all chains for this session
+      const allChains = await chainsTable.listEntities({
+        queryOptions: { filter: `PartitionKey eq '${sessionId}'` }
+      });
+      
+      // Check each chain's history to see if scanner was already a holder
+      for await (const chain of allChains) {
+        const checkChainId = chain.rowKey as string;
+        
+        for await (const record of chainHistoryTable.listEntities({
+          queryOptions: { filter: `PartitionKey eq '${checkChainId}' and toHolder eq '${scannerId}'` }
+        })) {
+          // Scanner was already a holder in this chain
+          context.warn(`[scanChain] holder reuse blocked: scannerId=${scannerId} was already holder in chain ${checkChainId}`);
+          return {
+            status: 400,
+            jsonBody: { 
+              error: { 
+                code: 'ALREADY_HOLDER', 
+                message: 'You have already been a chain holder in this session',
+                timestamp: now 
+              } 
+            }
+          };
+        }
       }
     } catch (error: any) {
       context.error(`[scanChain] Error checking holder history: ${error.message}`);
@@ -273,7 +283,7 @@ export async function scanChain(
     // Create new token for scanner (who becomes new holder)
     const newTokenId = randomUUID();
     const newSeq = (token.seq as number) + 1;
-    const tokenTTL = parseInt(process.env.CHAIN_TOKEN_TTL_SECONDS || '10');
+    const tokenTTL = parseInt(process.env.CHAIN_TOKEN_TTL_SECONDS || '25');
     const newExpiresAt = now + tokenTTL; // now is already in seconds
 
     const newTokenEntity = {

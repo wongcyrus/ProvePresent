@@ -154,7 +154,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         }
         {
           name: 'CHAIN_TOKEN_TTL_SECONDS'
-          value: '10'
+          value: '25'
         }
         {
           name: 'OWNER_TRANSFER'

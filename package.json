@@ -17,6 +17,25 @@
     "test:property": "npm run test:property --workspaces && cd backend && npm run test:property",
     "lint": "npm run lint --workspaces && cd backend && npm run lint"
   },
+  "overrides": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "@typescript-eslint/type-utils": "^8.56.1",
+    "@typescript-eslint/typescript-estree": "^8.56.1",
+    "@typescript-eslint/utils": "^8.56.1",
+    "ajv": "^6.14.0",
+    "minimatch": "^9.0.6",
+    "rollup": "^2.80.0",
+    "eslint-config-next": {
+      "@typescript-eslint/eslint-plugin": "^8.56.1",
+      "@typescript-eslint/parser": "^8.56.1",
+      "@typescript-eslint/type-utils": "^8.56.1",
+      "@typescript-eslint/typescript-estree": "^8.56.1",
+      "@typescript-eslint/utils": "^8.56.1"
+    }
+  },
   "keywords": [
     "attendance",
     "qr-code",
