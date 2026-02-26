@@ -11,6 +11,13 @@ This guide covers deploying the QR Chain Attendance system to Azure.
 - Node.js 18+ and npm
 - Bicep CLI (for infrastructure)
 
+### Authentication SKU Requirement
+
+For Microsoft Entra External ID / Azure AD B2C custom authentication in Static Web Apps, **Standard SKU is required**. Free SKU can fall back to default auth behavior and ignore custom provider registration settings.
+
+- Official reference: https://learn.microsoft.com/azure/static-web-apps/authentication-custom
+- This project enforces Standard SKU in deployment scripts when External ID is configured.
+
 ## Infrastructure Deployment
 
 ### 1. Deploy Infrastructure

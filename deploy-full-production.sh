@@ -15,6 +15,36 @@ NC='\033[0m'
 RESOURCE_GROUP="rg-qr-attendance-prod"
 LOCATION="eastus2"
 DEPLOYMENT_NAME="prod-full-$(date +%Y%m%d-%H%M%S)"
+DESIRED_SWA_SKU="Standard"
+
+verify_external_id_login() {
+    local app_url="$1"
+    local expected_tenant_id="$2"
+
+    echo "Validating External ID login authority..."
+    final_login_url=$(curl -s -L -o /dev/null -w '%{url_effective}' "$app_url/.auth/login/aad" || true)
+
+    if [ -z "$final_login_url" ]; then
+        echo -e "${RED}✗ Could not resolve SWA login redirect URL${NC}"
+        return 1
+    fi
+
+    if echo "$final_login_url" | grep -qi '/common/oauth2'; then
+        echo -e "${RED}✗ SWA auth fallback detected (common endpoint)${NC}"
+        echo "  Final login URL: $final_login_url"
+        return 1
+    fi
+
+    if [[ "$final_login_url" == *"$expected_tenant_id"* ]] || [[ "$final_login_url" == *"ciamlogin.com"* ]]; then
+        echo -e "${GREEN}✓ External ID login authority validated${NC}"
+        return 0
+    fi
+
+    echo -e "${RED}✗ SWA login redirect does not match External ID tenant${NC}"
+    echo "  Expected tenant: $expected_tenant_id"
+    echo "  Final login URL: $final_login_url"
+    return 1
+}
 
 echo -e "${BLUE}=========================================="
 echo "QR Chain Attendance - Full Production Deployment"
@@ -38,6 +68,12 @@ else
 fi
 
 # Validate External ID configuration to prevent login redirect loops
+if [ -z "$EXTERNAL_ID_ISSUER" ] || [ "$EXTERNAL_ID_ISSUER" = "null" ]; then
+    echo -e "${RED}✗ .external-id-credentials is missing EXTERNAL_ID_ISSUER${NC}"
+    echo "  External ID issuer is required for reliable production/dev auth behavior."
+    exit 1
+fi
+
 if [ -n "$EXTERNAL_ID_ISSUER" ]; then
     ISSUER_TENANT_ID=$(echo "$EXTERNAL_ID_ISSUER" | sed -nE 's#^.*/([0-9a-fA-F-]{36})/v2\.0/?$#\1#p')
     if [ -n "$ISSUER_TENANT_ID" ]; then
@@ -92,6 +128,11 @@ fi
 
 if ! command -v npm &> /dev/null; then
     echo -e "${RED}✗ npm not installed${NC}"
+    exit 1
+fi
+
+if ! command -v curl &> /dev/null; then
+    echo -e "${RED}✗ curl not installed${NC}"
     exit 1
 fi
 
@@ -291,6 +332,17 @@ if [ -n "$EXISTING_SWA" ] && [ "$EXISTING_SWA" != "null" ] && [ "$EXISTING_SWA" 
     echo -e "${GREEN}✓ Using existing Static Web App${NC}"
     echo "  Name: $STATIC_WEB_APP"
     echo "  URL: $STATIC_WEB_APP_URL"
+
+    CURRENT_SWA_SKU=$(az staticwebapp show --name "$STATIC_WEB_APP" --resource-group "$RESOURCE_GROUP" --query "sku.name" -o tsv 2>/dev/null || echo "")
+    if [ "$DESIRED_SWA_SKU" = "Standard" ] && [ "$CURRENT_SWA_SKU" != "Standard" ]; then
+        echo "Upgrading Static Web App SKU to Standard for External ID/B2C support..."
+        az staticwebapp update \
+            --name "$STATIC_WEB_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --sku Standard \
+            --output none
+        echo -e "${GREEN}✓ Static Web App upgraded to Standard${NC}"
+    fi
 else
     # Create new Static Web App
     STATIC_WEB_APP="swa-qrattendance-prod-$(date +%s)"
@@ -300,6 +352,7 @@ else
         --name $STATIC_WEB_APP \
         --resource-group $RESOURCE_GROUP \
         --location $LOCATION \
+        --sku $DESIRED_SWA_SKU \
         --tags Environment=Production Application="QR Chain Attendance" \
         --query '{name: name, defaultHostname: defaultHostname}' \
         --output json)
@@ -311,6 +364,7 @@ else
         echo -e "${GREEN}✓ Static Web App created${NC}"
         echo "  Name: $STATIC_WEB_APP"
         echo "  URL: $STATIC_WEB_APP_URL"
+        echo "  SKU: $DESIRED_SWA_SKU"
     else
         echo -e "${RED}✗ Failed to create Static Web App${NC}"
         exit 1
@@ -385,6 +439,17 @@ echo ""
 
 # Step 7.5: Verify and update Azure AD configuration
 echo -e "${BLUE}Step 7.5: Configuring Azure AD for Static Web App...${NC}"
+
+# External ID / B2C custom provider requires Standard SKU on Static Web Apps
+if [ -n "$EXTERNAL_ID_ISSUER" ]; then
+    SWA_SKU=$(az staticwebapp show --name "$STATIC_WEB_APP" --resource-group "$RESOURCE_GROUP" --query "sku.name" -o tsv 2>/dev/null || echo "")
+    if [ "$SWA_SKU" != "Standard" ]; then
+        echo -e "${RED}✗ External ID/B2C requires Static Web App Standard SKU${NC}"
+        echo "  Current SKU: ${SWA_SKU:-unknown}"
+        echo "  Static Web App: $STATIC_WEB_APP"
+        exit 1
+    fi
+fi
 
 if [ -n "$AAD_CLIENT_ID" ]; then
     echo -e "${GREEN}✓ Azure AD credentials provided${NC}"
@@ -589,6 +654,11 @@ if [ "$SWA_STATE" != "Unknown" ]; then
     echo -e "${GREEN}✓ Static Web App is ready${NC}"
 else
     echo -e "${YELLOW}⚠ Static Web App status unknown${NC}"
+fi
+
+if ! verify_external_id_login "$STATIC_WEB_APP_URL" "$TENANT_ID"; then
+    echo -e "${RED}✗ Authentication verification failed. Deployment halted.${NC}"
+    exit 1
 fi
 
 # Check tables

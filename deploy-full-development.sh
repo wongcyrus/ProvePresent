@@ -15,6 +15,36 @@ NC='\033[0m'
 RESOURCE_GROUP="rg-qr-attendance-dev"
 LOCATION="eastus2"
 DEPLOYMENT_NAME="dev-full-$(date +%Y%m%d-%H%M%S)"
+DESIRED_SWA_SKU="Standard"
+
+verify_external_id_login() {
+    local app_url="$1"
+    local expected_tenant_id="$2"
+
+    echo "Validating External ID login authority..."
+    final_login_url=$(curl -s -L -o /dev/null -w '%{url_effective}' "$app_url/.auth/login/aad" || true)
+
+    if [ -z "$final_login_url" ]; then
+        echo -e "${RED}✗ Could not resolve SWA login redirect URL${NC}"
+        return 1
+    fi
+
+    if echo "$final_login_url" | grep -qi '/common/oauth2'; then
+        echo -e "${RED}✗ SWA auth fallback detected (common endpoint)${NC}"
+        echo "  Final login URL: $final_login_url"
+        return 1
+    fi
+
+    if [[ "$final_login_url" == *"$expected_tenant_id"* ]] || [[ "$final_login_url" == *"ciamlogin.com"* ]]; then
+        echo -e "${GREEN}✓ External ID login authority validated${NC}"
+        return 0
+    fi
+
+    echo -e "${RED}✗ SWA login redirect does not match External ID tenant${NC}"
+    echo "  Expected tenant: $expected_tenant_id"
+    echo "  Final login URL: $final_login_url"
+    return 1
+}
 
 echo -e "${BLUE}=========================================="
 echo "QR Chain Attendance - Full Development Deployment"
@@ -38,6 +68,12 @@ else
 fi
 
 # Validate External ID configuration to prevent login redirect loops
+if [ -z "$EXTERNAL_ID_ISSUER" ] || [ "$EXTERNAL_ID_ISSUER" = "null" ]; then
+    echo -e "${RED}✗ .external-id-credentials is missing EXTERNAL_ID_ISSUER${NC}"
+    echo "  External ID issuer is required for reliable production/dev auth behavior."
+    exit 1
+fi
+
 if [ -n "$EXTERNAL_ID_ISSUER" ]; then
     ISSUER_TENANT_ID=$(echo "$EXTERNAL_ID_ISSUER" | sed -nE 's#^.*/([0-9a-fA-F-]{36})/v2\.0/?$#\1#p')
     if [ -n "$ISSUER_TENANT_ID" ]; then
@@ -92,6 +128,11 @@ fi
 
 if ! command -v npm &> /dev/null; then
     echo -e "${RED}✗ npm not installed${NC}"
+    exit 1
+fi
+
+if ! command -v curl &> /dev/null; then
+    echo -e "${RED}✗ curl not installed${NC}"
     exit 1
 fi
 
@@ -331,7 +372,7 @@ SWA_EXISTS=$(az staticwebapp show --name "$STATIC_WEB_APP_NAME" --resource-group
 
 if [ "$SWA_EXISTS" = "no" ]; then
     echo "Creating Static Web App for frontend configuration..."
-    az staticwebapp create --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --output none
+    az staticwebapp create --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --sku "$DESIRED_SWA_SKU" --output none
     echo "✓ Static Web App created"
     
     # Wait for creation to complete
@@ -343,6 +384,17 @@ if [ "$SWA_EXISTS" = "no" ]; then
         STATIC_WEB_APP_NAME="$ACTUAL_SWA_NAME"
         echo "✓ Using Static Web App: $STATIC_WEB_APP_NAME"
     fi
+fi
+
+CURRENT_SWA_SKU=$(az staticwebapp show --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "sku.name" -o tsv 2>/dev/null || echo "")
+if [ "$DESIRED_SWA_SKU" = "Standard" ] && [ "$CURRENT_SWA_SKU" != "Standard" ]; then
+    echo "Upgrading Static Web App SKU to Standard for External ID/B2C support..."
+    az staticwebapp update \
+        --name "$STATIC_WEB_APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --sku Standard \
+        --output none
+    echo -e "${GREEN}✓ Static Web App upgraded to Standard${NC}"
 fi
 
 # Get correct Static Web App URL with multiple fallbacks
@@ -368,6 +420,20 @@ fi
 
 # Ensure SWA has current Azure AD app settings (prevents stale secret login loops)
 if [ -n "$AAD_CLIENT_ID" ]; then
+    # External ID / B2C custom provider requires Standard SKU on Static Web Apps
+    if [ -n "$EXTERNAL_ID_ISSUER" ]; then
+        SWA_SKU=$(az staticwebapp show --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "sku.name" -o tsv 2>/dev/null || echo "")
+        if [ "$SWA_SKU" != "Standard" ]; then
+            echo -e "${RED}✗ External ID/B2C requires Static Web App Standard SKU${NC}"
+            echo "  Current SKU: ${SWA_SKU:-unknown}"
+            echo "  Static Web App: $STATIC_WEB_APP_NAME"
+            echo ""
+            echo "Upgrade and re-run deployment:"
+            echo "  az staticwebapp update --name $STATIC_WEB_APP_NAME --resource-group $RESOURCE_GROUP --sku Standard"
+            exit 1
+        fi
+    fi
+
     echo "Configuring Static Web App Azure AD settings..."
     SWA_AUTH_SETTINGS=(
         "AAD_CLIENT_ID=$AAD_CLIENT_ID"
@@ -472,7 +538,7 @@ done
 if [ -z "$SWA_FOUND" ]; then
     echo "Creating new Static Web App..."
     STATIC_WEB_APP_NAME="swa-qrattendance-dev"
-    az staticwebapp create --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --output none
+    az staticwebapp create --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" --sku "$DESIRED_SWA_SKU" --output none
     echo "✓ Static Web App created: $STATIC_WEB_APP_NAME"
     sleep 10  # Wait for creation
     
@@ -597,6 +663,11 @@ if [[ "$STATIC_WEB_APP_URL" =~ ^https:// ]]; then
         echo -e "${GREEN}✓ Static Web App is ready${NC}"
     else
         echo -e "${YELLOW}⚠ Static Web App health check returned HTTP $SWA_HEALTH${NC}"
+    fi
+
+    if ! verify_external_id_login "$STATIC_WEB_APP_URL" "$TENANT_ID"; then
+        echo -e "${RED}✗ Authentication verification failed. Deployment halted.${NC}"
+        exit 1
     fi
 else
     echo -e "${YELLOW}⚠ Static Web App URL not available for testing${NC}"
