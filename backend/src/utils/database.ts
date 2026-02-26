@@ -46,5 +46,8 @@ export const TableNames = {
   DELETION_LOG: 'DeletionLog',
   QUIZ_QUESTIONS: 'QuizQuestions',
   QUIZ_RESPONSES: 'QuizResponses',
-  QUIZ_METRICS: 'QuizMetrics'
+  QUIZ_METRICS: 'QuizMetrics',
+  CAPTURE_REQUESTS: 'CaptureRequests',
+  CAPTURE_UPLOADS: 'CaptureUploads',
+  CAPTURE_RESULTS: 'CaptureResults'
 } as const;

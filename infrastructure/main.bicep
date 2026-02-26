@@ -58,6 +58,18 @@ param gpt4VisionModelVersion string = 'vision-preview'
 @description('Deploy GPT-4 Vision model (required for Live Quiz feature)')
 param deployVisionModel bool = true
 
+@description('GPT-5.2-chat model deployment name')
+param gpt52ChatDeploymentName string = 'gpt-5.2-chat'
+
+@description('GPT-5.2-chat model name')
+param gpt52ChatModelName string = 'gpt-5.2-chat'
+
+@description('GPT-5.2-chat model version')
+param gpt52ChatModelVersion string = '2026-02-10'
+
+@description('Deploy GPT-5.2-chat model (preview - most advanced model)')
+param deployGpt52ChatModel bool = true
+
 @description('Tags to apply to all resources')
 param tags object = {
   Environment: environment
@@ -129,6 +141,10 @@ module openai 'modules/openai.bicep' = if (deployAzureOpenAI) {
     gpt4VisionModelName: gpt4VisionModelName
     gpt4VisionModelVersion: gpt4VisionModelVersion
     deployVisionModel: deployVisionModel
+    gpt52ChatDeploymentName: gpt52ChatDeploymentName
+    gpt52ChatModelName: gpt52ChatModelName
+    gpt52ChatModelVersion: gpt52ChatModelVersion
+    deployGpt52ChatModel: deployGpt52ChatModel
     tags: tags
   }
 }
@@ -146,8 +162,8 @@ module functions 'modules/functions.bicep' = {
     appInsightsConnectionString: appInsights.outputs.connectionString
     azureOpenAIEndpoint: deployAzureOpenAI ? openai.outputs.endpoint : ''
     azureOpenAIKey: deployAzureOpenAI ? openai.outputs.primaryKey : ''
-    azureOpenAIDeployment: deployAzureOpenAI ? openai.outputs.gpt4DeploymentName : ''
-    azureOpenAIVisionDeployment: deployAzureOpenAI ? openai.outputs.gpt4VisionDeploymentName : ''
+    azureOpenAIDeployment: deployAzureOpenAI ? (deployGpt52ChatModel ? openai.outputs.gpt52ChatDeploymentName : 'gpt-4o') : ''
+    azureOpenAIVisionDeployment: deployAzureOpenAI ? 'gpt-4o' : ''
     frontendUrls: corsUrls
     tags: tags
   }
@@ -215,6 +231,9 @@ output gpt4DeploymentName string = deployAzureOpenAI ? openai.outputs.gpt4Deploy
 
 @description('GPT-4 Vision deployment name (if deployed)')
 output gpt4VisionDeploymentName string = deployAzureOpenAI ? openai.outputs.gpt4VisionDeploymentName : ''
+
+@description('GPT-5.2-chat deployment name (if deployed)')
+output gpt52ChatDeploymentName string = deployAzureOpenAI ? openai.outputs.gpt52ChatDeploymentName : ''
 
 @description('Deployment summary')
 output deploymentSummary object = {

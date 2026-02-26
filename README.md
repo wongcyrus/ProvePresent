@@ -21,6 +21,7 @@ A comprehensive, real-time attendance tracking system using QR code chains, geol
 - **[Project Status](PROJECT_STATUS.md)** - Current deployment status
 - **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Complete deployment guide
 - **[Live Quiz Guide](LIVE_QUIZ.md)** - AI-powered quiz feature
+- **[Student Image Capture](CAPTURE_FEATURE_COMPLETE.md)** - Photo capture & seating analysis
 
 ### Quick Links
 - **[System Architecture](SYSTEM_ARCHITECTURE.md)** - System design
@@ -40,6 +41,7 @@ A comprehensive, real-time attendance tracking system using QR code chains, geol
 - **Role-Based Access**: Automatic email domain-based authentication
 
 ### Advanced Features
+- **Student Image Capture**: AI-powered seating arrangement analysis with GPT-4o vision
 - **Recurring Sessions**: Create daily, weekly, or monthly recurring sessions
 - **Geolocation Tracking**: Location-based attendance with warning/enforce modes (default 1000m radius)
 - **Attendance Snapshots**: On-demand snapshots via chains to record instant attendance

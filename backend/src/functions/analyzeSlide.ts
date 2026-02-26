@@ -100,16 +100,16 @@ export async function analyzeSlide(
       imageDataForAI = imageUrl;
     }
 
-    // Call Azure OpenAI Vision API (GPT-4o has vision built-in)
+    // Call Azure OpenAI vision-capable chat API
     const openaiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const openaiKey = process.env.AZURE_OPENAI_KEY;
-    const openaiDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+    const openaiDeployment = process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
 
     if (!openaiEndpoint || !openaiKey) {
       throw new Error('Azure OpenAI not configured');
     }
 
-    const apiUrl = `${openaiEndpoint}/openai/deployments/${openaiDeployment}/chat/completions?api-version=2024-08-01-preview`;
+    const apiUrl = `${openaiEndpoint}/openai/deployments/${openaiDeployment}/chat/completions?api-version=2024-10-21`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',

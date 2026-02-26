@@ -25,6 +25,10 @@ param gpt4VisionDeploymentName = 'gpt-4o-vision'
 param gpt4VisionModelName = 'gpt-4o'
 param gpt4VisionModelVersion = '2024-08-06'  // GPT-4o has built-in vision
 param deployVisionModel = true
+param gpt52ChatDeploymentName = 'gpt-5.2-chat'
+param gpt52ChatModelName = 'gpt-5.2-chat'
+param gpt52ChatModelVersion = '2026-02-10'
+param deployGpt52ChatModel = true
 
 // Tags
 param tags = {

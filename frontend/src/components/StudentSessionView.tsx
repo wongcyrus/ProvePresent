@@ -14,6 +14,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { getAuthHeaders } from '../utils/authHeaders';
 import { QRScanner } from './QRScanner';
 import { QRDisplay } from './QRDisplay';
+import { StudentCaptureUI } from './StudentCaptureUI';
+import * as signalR from '@microsoft/signalr';
 import { getCurrentLocation } from '../utils/geolocation';
 import type {
   Session,
@@ -118,6 +120,11 @@ export function StudentSessionView({
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
   const [isEnablingLocation, setIsEnablingLocation] = useState(false);
+  
+  // Capture request state
+  const [captureRequestId, setCaptureRequestId] = useState<string | null>(null);
+  const [captureSasUrl, setCaptureSasUrl] = useState<string | null>(null);
+  const [captureExpiresAt, setCaptureExpiresAt] = useState<number | null>(null);
 
   /**
    * Fetch session data
@@ -255,6 +262,89 @@ export function StudentSessionView({
       }
     };
   }, [fetchSession, fetchStudentStatus]);
+
+  /**
+   * Setup SignalR connection for capture requests
+   */
+  useEffect(() => {
+    let connection: signalR.HubConnection | null = null;
+
+    const setupSignalR = async () => {
+      try {
+        console.log('[SignalR] Starting setup for session:', sessionId);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+        const headers = await getAuthHeaders();
+        
+        console.log('[SignalR] Negotiating connection...');
+        // Negotiate connection
+        const negotiateResponse = await fetch(`${apiUrl}/sessions/${sessionId}/student/negotiate`, {
+          credentials: 'include',
+          method: 'POST',
+          headers
+        });
+
+        if (!negotiateResponse.ok) {
+          const errorText = await negotiateResponse.text();
+          console.error('[SignalR] Failed to negotiate:', negotiateResponse.status, errorText);
+          return;
+        }
+
+        const connectionInfo = await negotiateResponse.json();
+        console.log('[SignalR] Connection info received:', {
+          url: connectionInfo.url,
+          hasAccessToken: !!connectionInfo.accessToken
+        });
+
+        // Create connection
+        connection = new signalR.HubConnectionBuilder()
+          .withUrl(connectionInfo.url, {
+            accessTokenFactory: () => connectionInfo.accessToken,
+          })
+          .withAutomaticReconnect()
+          .configureLogging(signalR.LogLevel.Information)
+          .build();
+
+        // Handle capture request event
+        connection.on('captureRequest', (event: any) => {
+          console.log('[SignalR] Capture request received:', event);
+          console.log('[SignalR] Setting capture state:', {
+            captureRequestId: event.captureRequestId,
+            sasUrl: event.sasUrl,
+            expiresAt: event.expiresAt
+          });
+          setCaptureRequestId(event.captureRequestId);
+          setCaptureSasUrl(event.sasUrl);
+          setCaptureExpiresAt(event.expiresAt);
+        });
+
+        connection.onreconnecting((error) => {
+          console.warn('[SignalR] Reconnecting...', error);
+        });
+
+        connection.onreconnected((connectionId) => {
+          console.log('[SignalR] Reconnected:', connectionId);
+        });
+
+        connection.onclose((error) => {
+          console.log('[SignalR] Connection closed:', error);
+        });
+
+        await connection.start();
+        console.log('[SignalR] Connected successfully for capture events');
+      } catch (error) {
+        console.error('[SignalR] Connection error:', error);
+      }
+    };
+
+    setupSignalR();
+
+    return () => {
+      if (connection) {
+        console.log('[SignalR] Stopping connection');
+        connection.stop();
+      }
+    };
+  }, [sessionId]);
 
   /**
    * Handle session QR scan (enrollment)
@@ -556,6 +646,44 @@ export function StudentSessionView({
             )}
           </div>
         </div>
+      )}
+
+      {/* Student Image Capture UI */}
+      {/* Debug info - remove after testing */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{ padding: '1rem', background: '#f0f0f0', margin: '1rem', fontSize: '0.8rem' }}>
+          <strong>Debug Info:</strong>
+          <div>sessionStarted: {sessionStarted ? 'true' : 'false'}</div>
+          <div>sessionEnded: {sessionEnded ? 'true' : 'false'}</div>
+          <div>captureRequestId: {captureRequestId || 'null'}</div>
+          <div>captureSasUrl: {captureSasUrl ? 'set' : 'null'}</div>
+          <div>captureExpiresAt: {captureExpiresAt || 'null'}</div>
+          <div>Should show UI: {(sessionStarted && !sessionEnded && captureRequestId && captureSasUrl && captureExpiresAt) ? 'YES' : 'NO'}</div>
+        </div>
+      )}
+      
+      {sessionStarted && !sessionEnded && captureRequestId && captureSasUrl && captureExpiresAt && (
+        <StudentCaptureUI
+          sessionId={sessionId}
+          studentId={studentId}
+          captureRequestId={captureRequestId}
+          sasUrl={captureSasUrl}
+          expiresAt={captureExpiresAt}
+          onUploadComplete={() => {
+            // Clear capture request after upload
+            setCaptureRequestId(null);
+            setCaptureSasUrl(null);
+            setCaptureExpiresAt(null);
+            setSuccessMessage('Photo uploaded successfully!');
+            setTimeout(() => setSuccessMessage(null), 5000);
+          }}
+          onCaptureExpired={() => {
+            // Clear capture request when expired
+            setCaptureRequestId(null);
+            setCaptureSasUrl(null);
+            setCaptureExpiresAt(null);
+          }}
+        />
       )}
 
       {/* Messages */}

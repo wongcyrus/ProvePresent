@@ -48,7 +48,7 @@ export async function generateQuestions(
     // Call Azure OpenAI to generate questions
     const openaiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const openaiKey = process.env.AZURE_OPENAI_KEY;
-    const openaiDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4';
+    const openaiDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat';
 
     if (!openaiEndpoint || !openaiKey) {
       throw new Error('Azure OpenAI not configured');
@@ -65,7 +65,7 @@ Summary: ${analysis.summary || 'N/A'}
 
     const difficultyFilter = difficulty || analysis.difficulty || 'MEDIUM';
 
-    const apiUrl = `${openaiEndpoint}/openai/deployments/${openaiDeployment}/chat/completions?api-version=2024-02-15-preview`;
+    const apiUrl = `${openaiEndpoint}/openai/deployments/${openaiDeployment}/chat/completions?api-version=2024-10-21`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',

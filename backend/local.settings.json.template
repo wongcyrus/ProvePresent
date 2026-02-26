@@ -11,9 +11,9 @@
     "CHAIN_TOKEN_TTL_SECONDS": "20",
     "OWNER_TRANSFER": "true",
     "WIFI_SSID_ALLOWLIST": "",
-    "AOAI_ENDPOINT": "",
-    "AOAI_KEY": "",
-    "AOAI_DEPLOYMENT": ""
+    "AZURE_OPENAI_ENDPOINT": "",
+    "AZURE_OPENAI_KEY": "",
+    "AZURE_OPENAI_DEPLOYMENT": "gpt-5.2-chat"
   },
   "Host": {
     "CORS": "*",

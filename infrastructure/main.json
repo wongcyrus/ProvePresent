@@ -1,0 +1,1657 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "14940729901145880627"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (dev, staging, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "baseName": {
+      "type": "string",
+      "defaultValue": "qrattendance",
+      "minLength": 3,
+      "maxLength": 20,
+      "metadata": {
+        "description": "Base name for all resources (will be suffixed with environment)"
+      }
+    },
+    "frontendUrls": {
+      "type": "array",
+      "defaultValue": [
+        "http://localhost:3000"
+      ],
+      "metadata": {
+        "description": "Frontend URLs for CORS configuration (fallback only - Static Web App uses linked backend)"
+      }
+    },
+    "deployAzureOpenAI": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Deploy Azure OpenAI resource (optional)"
+      }
+    },
+    "deploySignalR": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Deploy SignalR Service (optional, system works with polling fallback)"
+      }
+    },
+    "gpt4DeploymentName": {
+      "type": "string",
+      "defaultValue": "gpt-4",
+      "metadata": {
+        "description": "GPT-4 model deployment name"
+      }
+    },
+    "gpt4ModelName": {
+      "type": "string",
+      "defaultValue": "gpt-4",
+      "metadata": {
+        "description": "GPT-4 model name"
+      }
+    },
+    "gpt4ModelVersion": {
+      "type": "string",
+      "defaultValue": "0613",
+      "metadata": {
+        "description": "GPT-4 model version"
+      }
+    },
+    "gpt4VisionDeploymentName": {
+      "type": "string",
+      "defaultValue": "gpt-4-vision",
+      "metadata": {
+        "description": "GPT-4 Vision model deployment name"
+      }
+    },
+    "gpt4VisionModelName": {
+      "type": "string",
+      "defaultValue": "gpt-4",
+      "metadata": {
+        "description": "GPT-4 Vision model name"
+      }
+    },
+    "gpt4VisionModelVersion": {
+      "type": "string",
+      "defaultValue": "vision-preview",
+      "metadata": {
+        "description": "GPT-4 Vision model version"
+      }
+    },
+    "deployVisionModel": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Deploy GPT-4 Vision model (required for Live Quiz feature)"
+      }
+    },
+    "gpt52ChatDeploymentName": {
+      "type": "string",
+      "defaultValue": "gpt-5.2-chat",
+      "metadata": {
+        "description": "GPT-5.2-chat model deployment name"
+      }
+    },
+    "gpt52ChatModelName": {
+      "type": "string",
+      "defaultValue": "gpt-5.2-chat",
+      "metadata": {
+        "description": "GPT-5.2-chat model name"
+      }
+    },
+    "gpt52ChatModelVersion": {
+      "type": "string",
+      "defaultValue": "2026-02-10",
+      "metadata": {
+        "description": "GPT-5.2-chat model version"
+      }
+    },
+    "deployGpt52ChatModel": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Deploy GPT-5.2-chat model (preview - most advanced model)"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "Environment": "[parameters('environment')]",
+        "Application": "QR Chain Attendance",
+        "ManagedBy": "Bicep"
+      },
+      "metadata": {
+        "description": "Tags to apply to all resources"
+      }
+    }
+  },
+  "variables": {
+    "resourceSuffix": "[format('{0}-{1}', parameters('baseName'), parameters('environment'))]",
+    "storageAccountName": "[replace(format('st{0}', variables('resourceSuffix')), '-', '')]",
+    "signalRName": "[format('signalr-{0}', variables('resourceSuffix'))]",
+    "functionAppName": "[format('func-{0}', variables('resourceSuffix'))]",
+    "appServicePlanName": "[format('asp-{0}', variables('resourceSuffix'))]",
+    "appInsightsName": "[format('appi-{0}', variables('resourceSuffix'))]",
+    "openAIName": "[format('openai-{0}', variables('resourceSuffix'))]",
+    "corsUrls": "[parameters('frontendUrls')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storage-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[variables('storageAccountName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "15190532788140567227"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the storage account"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to the resource"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot",
+                "supportsHttpsTrafficOnly": true,
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "allowSharedKeyAccess": true,
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices"
+                },
+                "encryption": {
+                  "services": {
+                    "table": {
+                      "enabled": true,
+                      "keyType": "Account"
+                    },
+                    "blob": {
+                      "enabled": true,
+                      "keyType": "Account"
+                    }
+                  },
+                  "keySource": "Microsoft.Storage"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {},
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'Sessions')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'Attendance')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'Tokens')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'Chains')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'ScanLogs')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'UserSessions')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'AttendanceSnapshots')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'ChainHistory')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'DeletionLog')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'QuizQuestions')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'QuizResponses')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'QuizMetrics')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'CaptureRequests')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'CaptureUploads')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'CaptureResults')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "deleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'quiz-slides')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'student-captures')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account name"
+              },
+              "value": "[parameters('storageAccountName')]"
+            },
+            "storageAccountId": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account ID"
+              },
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            },
+            "tableEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account Table endpoint"
+              },
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.table]"
+            },
+            "storageAccountKey": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account primary key"
+              },
+              "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value]"
+            },
+            "blobEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account Blob endpoint"
+              },
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.blob]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "signalr-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "signalRName": {
+            "value": "[variables('signalRName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "deploySignalR": {
+            "value": "[parameters('deploySignalR')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "10863626874638242811"
+            }
+          },
+          "parameters": {
+            "signalRName": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR Service name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the SignalR Service"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "metadata": {
+                "description": "Environment (dev, staging, prod)"
+              }
+            },
+            "deploySignalR": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Deploy SignalR Service (optional, can use polling fallback)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to the resource"
+              }
+            }
+          },
+          "variables": {
+            "sku": "[if(equals(parameters('environment'), 'dev'), createObject('name', 'Free_F1', 'tier', 'Free', 'capacity', 1), createObject('name', 'Standard_S1', 'tier', 'Standard', 'capacity', 1))]"
+          },
+          "resources": [
+            {
+              "condition": "[parameters('deploySignalR')]",
+              "type": "Microsoft.SignalRService/signalR",
+              "apiVersion": "2023-02-01",
+              "name": "[parameters('signalRName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": "[variables('sku')]",
+              "kind": "SignalR",
+              "properties": {
+                "features": [
+                  {
+                    "flag": "ServiceMode",
+                    "value": "Serverless"
+                  },
+                  {
+                    "flag": "EnableConnectivityLogs",
+                    "value": "True"
+                  },
+                  {
+                    "flag": "EnableMessagingLogs",
+                    "value": "True"
+                  }
+                ],
+                "cors": {
+                  "allowedOrigins": [
+                    "*"
+                  ]
+                },
+                "networkACLs": "[if(equals(parameters('environment'), 'dev'), null(), createObject('defaultAction', 'Allow', 'publicNetwork', createObject('allow', createArray('ServerConnection', 'ClientConnection', 'RESTAPI', 'Trace'))))]",
+                "publicNetworkAccess": "Enabled",
+                "tls": {
+                  "clientCertEnabled": false
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "signalRName": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR Service name"
+              },
+              "value": "[if(parameters('deploySignalR'), parameters('signalRName'), '')]"
+            },
+            "signalRId": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR Service ID"
+              },
+              "value": "[if(parameters('deploySignalR'), resourceId('Microsoft.SignalRService/signalR', parameters('signalRName')), '')]"
+            },
+            "endpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR Service endpoint"
+              },
+              "value": "[if(parameters('deploySignalR'), reference(resourceId('Microsoft.SignalRService/signalR', parameters('signalRName')), '2023-02-01').hostName, '')]"
+            },
+            "connectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR Service connection string (use dummy value if not deployed)"
+              },
+              "value": "[if(parameters('deploySignalR'), format('Endpoint=https://{0};AccessKey={1};Version=1.0;', reference(resourceId('Microsoft.SignalRService/signalR', parameters('signalRName')), '2023-02-01').hostName, listKeys(resourceId('Microsoft.SignalRService/signalR', parameters('signalRName')), '2023-02-01').primaryKey), 'Endpoint=https://dummy.service.signalr.net;AccessKey=dummykey;Version=1.0;')]"
+            },
+            "primaryKey": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR Service primary key"
+              },
+              "value": "[if(parameters('deploySignalR'), listKeys(resourceId('Microsoft.SignalRService/signalR', parameters('signalRName')), '2023-02-01').primaryKey, '')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "appinsights-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "appInsightsName": {
+            "value": "[variables('appInsightsName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "9712275839566390996"
+            }
+          },
+          "parameters": {
+            "appInsightsName": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for Application Insights"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to the resource"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}-workspace', parameters('appInsightsName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30,
+                "features": {
+                  "enableLogAccessUsingOnlyResourcePermissions": true
+                },
+                "workspaceCapping": {
+                  "dailyQuotaGb": 1
+                },
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[parameters('appInsightsName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]",
+                "IngestionMode": "LogAnalytics",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled",
+                "RetentionInDays": 30
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "appInsightsName": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights name"
+              },
+              "value": "[parameters('appInsightsName')]"
+            },
+            "appInsightsId": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights ID"
+              },
+              "value": "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+            },
+            "instrumentationKey": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights instrumentation key"
+              },
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').InstrumentationKey]"
+            },
+            "connectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights connection string"
+              },
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
+            },
+            "workspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics Workspace ID"
+              },
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "condition": "[parameters('deployAzureOpenAI')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "openai-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "openAIName": {
+            "value": "[variables('openAIName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "gpt4DeploymentName": {
+            "value": "[parameters('gpt4DeploymentName')]"
+          },
+          "gpt4ModelName": {
+            "value": "[parameters('gpt4ModelName')]"
+          },
+          "gpt4ModelVersion": {
+            "value": "[parameters('gpt4ModelVersion')]"
+          },
+          "gpt4VisionDeploymentName": {
+            "value": "[parameters('gpt4VisionDeploymentName')]"
+          },
+          "gpt4VisionModelName": {
+            "value": "[parameters('gpt4VisionModelName')]"
+          },
+          "gpt4VisionModelVersion": {
+            "value": "[parameters('gpt4VisionModelVersion')]"
+          },
+          "deployVisionModel": {
+            "value": "[parameters('deployVisionModel')]"
+          },
+          "gpt52ChatDeploymentName": {
+            "value": "[parameters('gpt52ChatDeploymentName')]"
+          },
+          "gpt52ChatModelName": {
+            "value": "[parameters('gpt52ChatModelName')]"
+          },
+          "gpt52ChatModelVersion": {
+            "value": "[parameters('gpt52ChatModelVersion')]"
+          },
+          "deployGpt52ChatModel": {
+            "value": "[parameters('deployGpt52ChatModel')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "7056364443847025289"
+            }
+          },
+          "parameters": {
+            "openAIName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure OpenAI resource name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for Azure OpenAI"
+              }
+            },
+            "gpt4DeploymentName": {
+              "type": "string",
+              "defaultValue": "gpt-4",
+              "metadata": {
+                "description": "GPT-4 model deployment name"
+              }
+            },
+            "gpt4ModelName": {
+              "type": "string",
+              "defaultValue": "gpt-4",
+              "metadata": {
+                "description": "GPT-4 model name"
+              }
+            },
+            "gpt4ModelVersion": {
+              "type": "string",
+              "defaultValue": "0613",
+              "metadata": {
+                "description": "GPT-4 model version"
+              }
+            },
+            "gpt4VisionDeploymentName": {
+              "type": "string",
+              "defaultValue": "gpt-4-vision",
+              "metadata": {
+                "description": "GPT-4 Vision model deployment name"
+              }
+            },
+            "gpt4VisionModelName": {
+              "type": "string",
+              "defaultValue": "gpt-4",
+              "metadata": {
+                "description": "GPT-4 Vision model name"
+              }
+            },
+            "gpt4VisionModelVersion": {
+              "type": "string",
+              "defaultValue": "vision-preview",
+              "metadata": {
+                "description": "GPT-4 Vision model version"
+              }
+            },
+            "deployVisionModel": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Deploy GPT-4 Vision model (required for Live Quiz feature)"
+              }
+            },
+            "gpt52ChatDeploymentName": {
+              "type": "string",
+              "defaultValue": "gpt-5.2-chat",
+              "metadata": {
+                "description": "GPT-5.2-chat model deployment name"
+              }
+            },
+            "gpt52ChatModelName": {
+              "type": "string",
+              "defaultValue": "gpt-5.2-chat",
+              "metadata": {
+                "description": "GPT-5.2-chat model name"
+              }
+            },
+            "gpt52ChatModelVersion": {
+              "type": "string",
+              "defaultValue": "2026-02-10",
+              "metadata": {
+                "description": "GPT-5.2-chat model version"
+              }
+            },
+            "deployGpt52ChatModel": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Deploy GPT-5.2-chat model (preview - most advanced model)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to the resource"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2024-10-01",
+              "name": "[parameters('openAIName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "AIServices",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "sku": {
+                "name": "S0"
+              },
+              "properties": {
+                "customSubDomainName": "[parameters('openAIName')]",
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "ipRules": [],
+                  "virtualNetworkRules": []
+                }
+              }
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt4DeploymentName'))]",
+              "sku": {
+                "name": "Standard",
+                "capacity": 10
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[parameters('gpt4ModelName')]",
+                  "version": "[parameters('gpt4ModelVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('deployVisionModel')]",
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt4VisionDeploymentName'))]",
+              "sku": {
+                "name": "Standard",
+                "capacity": 10
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[parameters('gpt4VisionModelName')]",
+                  "version": "[parameters('gpt4VisionModelVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('openAIName'), parameters('gpt4DeploymentName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('deployGpt52ChatModel')]",
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt52ChatDeploymentName'))]",
+              "sku": {
+                "name": "Standard",
+                "capacity": 5
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[parameters('gpt52ChatModelName')]",
+                  "version": "[parameters('gpt52ChatModelVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('openAIName'), parameters('gpt4VisionDeploymentName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "openAIName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure OpenAI name"
+              },
+              "value": "[parameters('openAIName')]"
+            },
+            "openAIId": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure OpenAI ID"
+              },
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName'))]"
+            },
+            "endpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure OpenAI endpoint"
+              },
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2024-10-01').endpoint]"
+            },
+            "primaryKey": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure OpenAI primary key"
+              },
+              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2024-10-01').key1]"
+            },
+            "gpt4DeploymentName": {
+              "type": "string",
+              "metadata": {
+                "description": "GPT-4 deployment name"
+              },
+              "value": "[parameters('gpt4DeploymentName')]"
+            },
+            "gpt4VisionDeploymentName": {
+              "type": "string",
+              "metadata": {
+                "description": "GPT-4 Vision deployment name (if deployed)"
+              },
+              "value": "[if(parameters('deployVisionModel'), parameters('gpt4VisionDeploymentName'), '')]"
+            },
+            "gpt52ChatDeploymentName": {
+              "type": "string",
+              "metadata": {
+                "description": "GPT-5.2-chat deployment name (if deployed)"
+              },
+              "value": "[if(parameters('deployGpt52ChatModel'), parameters('gpt52ChatDeploymentName'), '')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "functions-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "functionAppName": {
+            "value": "[variables('functionAppName')]"
+          },
+          "appServicePlanName": {
+            "value": "[variables('appServicePlanName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "storageAccountName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.storageAccountName.value]"
+          },
+          "storageAccountUri": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.tableEndpoint.value]"
+          },
+          "signalRConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'signalr-deployment'), '2025-04-01').outputs.connectionString.value]"
+          },
+          "appInsightsConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-deployment'), '2025-04-01').outputs.connectionString.value]"
+          },
+          "azureOpenAIEndpoint": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.endpoint.value), createObject('value', ''))]",
+          "azureOpenAIKey": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.primaryKey.value), createObject('value', ''))]",
+          "azureOpenAIDeployment": "[if(parameters('deployAzureOpenAI'), if(parameters('deployGpt52ChatModel'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt52ChatDeploymentName.value), createObject('value', 'gpt-4o')), createObject('value', ''))]",
+          "azureOpenAIVisionDeployment": "[if(parameters('deployAzureOpenAI'), createObject('value', 'gpt-4o'), createObject('value', ''))]",
+          "frontendUrls": {
+            "value": "[variables('corsUrls')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "2179889876714695520"
+            }
+          },
+          "parameters": {
+            "functionAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App name"
+              }
+            },
+            "appServicePlanName": {
+              "type": "string",
+              "metadata": {
+                "description": "App Service Plan name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the Function App"
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account name for Function App"
+              }
+            },
+            "storageAccountUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account Table URI"
+              }
+            },
+            "signalRConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "SignalR Service connection string"
+              }
+            },
+            "appInsightsConnectionString": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Application Insights connection string"
+              }
+            },
+            "azureOpenAIEndpoint": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Azure OpenAI endpoint (optional)"
+              }
+            },
+            "azureOpenAIKey": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Azure OpenAI key (optional)"
+              }
+            },
+            "azureOpenAIDeployment": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Azure OpenAI GPT-4 deployment name (optional)"
+              }
+            },
+            "azureOpenAIVisionDeployment": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Azure OpenAI GPT-4 Vision deployment name (optional)"
+              }
+            },
+            "frontendUrls": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Frontend URLs for CORS configuration (fallback only - Static Web App uses linked backend)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to the resource"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('appServicePlanName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Y1",
+                "tier": "Dynamic",
+                "size": "Y1",
+                "family": "Y"
+              },
+              "properties": {
+                "reserved": true
+              },
+              "kind": "functionapp"
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('functionAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "functionapp,linux",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "reserved": true,
+                "httpsOnly": true,
+                "clientAffinityEnabled": false,
+                "siteConfig": {
+                  "linuxFxVersion": "NODE|22",
+                  "appSettings": [
+                    {
+                      "name": "AzureWebJobsStorage",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTSHARE",
+                      "value": "[toLower(parameters('functionAppName'))]"
+                    },
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~4"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "node"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME_VERSION",
+                      "value": "~4"
+                    },
+                    {
+                      "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                      "value": "~22"
+                    },
+                    {
+                      "name": "FUNCTIONS_NODE_BLOCK_ON_ENTRY_POINT_ERROR",
+                      "value": "true"
+                    },
+                    {
+                      "name": "WEBSITE_MOUNT_ENABLED",
+                      "value": "1"
+                    },
+                    {
+                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                      "value": "false"
+                    },
+                    {
+                      "name": "ENABLE_ORYX_BUILD",
+                      "value": "false"
+                    },
+                    {
+                      "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                      "value": "[parameters('appInsightsConnectionString')]"
+                    },
+                    {
+                      "name": "STORAGE_ACCOUNT_NAME",
+                      "value": "[parameters('storageAccountName')]"
+                    },
+                    {
+                      "name": "STORAGE_ACCOUNT_URI",
+                      "value": "[parameters('storageAccountUri')]"
+                    },
+                    {
+                      "name": "SIGNALR_CONNECTION_STRING",
+                      "value": "[parameters('signalRConnectionString')]"
+                    },
+                    {
+                      "name": "LATE_ROTATION_SECONDS",
+                      "value": "60"
+                    },
+                    {
+                      "name": "EARLY_LEAVE_ROTATION_SECONDS",
+                      "value": "60"
+                    },
+                    {
+                      "name": "CHAIN_TOKEN_TTL_SECONDS",
+                      "value": "25"
+                    },
+                    {
+                      "name": "OWNER_TRANSFER",
+                      "value": "true"
+                    },
+                    {
+                      "name": "WIFI_SSID_ALLOWLIST",
+                      "value": ""
+                    },
+                    {
+                      "name": "AZURE_OPENAI_ENDPOINT",
+                      "value": "[parameters('azureOpenAIEndpoint')]"
+                    },
+                    {
+                      "name": "AZURE_OPENAI_KEY",
+                      "value": "[parameters('azureOpenAIKey')]"
+                    },
+                    {
+                      "name": "AZURE_OPENAI_DEPLOYMENT",
+                      "value": "[parameters('azureOpenAIDeployment')]"
+                    },
+                    {
+                      "name": "AZURE_OPENAI_VISION_DEPLOYMENT",
+                      "value": "[parameters('azureOpenAIVisionDeployment')]"
+                    },
+                    {
+                      "name": "AOAI_ENDPOINT",
+                      "value": "[parameters('azureOpenAIEndpoint')]"
+                    },
+                    {
+                      "name": "AOAI_KEY",
+                      "value": "[parameters('azureOpenAIKey')]"
+                    },
+                    {
+                      "name": "AOAI_DEPLOYMENT",
+                      "value": "[parameters('azureOpenAIDeployment')]"
+                    },
+                    {
+                      "name": "QR_ENCRYPTION_KEY",
+                      "value": "[uniqueString(resourceGroup().id, parameters('functionAppName'), 'qr-encryption')]"
+                    }
+                  ],
+                  "cors": {
+                    "allowedOrigins": "[if(greater(length(parameters('frontendUrls')), 0), parameters('frontendUrls'), createArray('*'))]",
+                    "supportCredentials": true
+                  },
+                  "use32BitWorkerProcess": false,
+                  "ftpsState": "Disabled",
+                  "minTlsVersion": "1.2",
+                  "http20Enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('functionAppName'), 'authsettingsV2')]",
+              "properties": {
+                "platform": {
+                  "enabled": false
+                },
+                "globalValidation": {
+                  "requireAuthentication": false,
+                  "unauthenticatedClientAction": "AllowAnonymous"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "functionAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App name"
+              },
+              "value": "[parameters('functionAppName')]"
+            },
+            "functionAppId": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App ID"
+              },
+              "value": "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+            },
+            "defaultHostname": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App default hostname"
+              },
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01').defaultHostName]"
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App principal ID (Managed Identity)"
+              },
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'appinsights-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'openai-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'signalr-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'storage-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "rbac-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.storageAccountName.value]"
+          },
+          "signalRName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'signalr-deployment'), '2025-04-01').outputs.signalRName.value]"
+          },
+          "functionAppPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-deployment'), '2025-04-01').outputs.principalId.value]"
+          },
+          "deployAzureOpenAI": {
+            "value": "[parameters('deployAzureOpenAI')]"
+          },
+          "openAIName": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.openAIName.value), createObject('value', ''))]"
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "17857546025606830611"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account name"
+              }
+            },
+            "signalRName": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR Service name"
+              }
+            },
+            "functionAppPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App principal ID"
+              }
+            },
+            "deployAzureOpenAI": {
+              "type": "bool",
+              "metadata": {
+                "description": "Deploy Azure OpenAI"
+              }
+            },
+            "openAIName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure OpenAI name (if deployed)"
+              }
+            }
+          },
+          "variables": {
+            "storageTableDataContributorRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')]",
+            "signalRServiceOwnerRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7e4f1700-ea5a-4f59-8f37-079cfe29dce3')]",
+            "cognitiveServicesOpenAIUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), parameters('functionAppPrincipalId'), variables('storageTableDataContributorRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('storageTableDataContributorRoleId')]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.SignalRService/signalR', parameters('signalRName'))]",
+              "name": "[guid(resourceId('Microsoft.SignalRService/signalR', parameters('signalRName')), parameters('functionAppPrincipalId'), variables('signalRServiceOwnerRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('signalRServiceOwnerRoleId')]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "condition": "[parameters('deployAzureOpenAI')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), parameters('functionAppPrincipalId'), variables('cognitiveServicesOpenAIUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('cognitiveServicesOpenAIUserRoleId')]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ],
+          "outputs": {
+            "functionAppStorageRoleAssignmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage role assignment for Function App"
+              },
+              "value": "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), parameters('functionAppPrincipalId'), variables('storageTableDataContributorRoleId')))]"
+            },
+            "functionAppSignalRRoleAssignmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR role assignment for Function App"
+              },
+              "value": "[extensionResourceId(resourceId('Microsoft.SignalRService/signalR', parameters('signalRName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.SignalRService/signalR', parameters('signalRName')), parameters('functionAppPrincipalId'), variables('signalRServiceOwnerRoleId')))]"
+            },
+            "functionAppOpenAIRoleAssignmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "OpenAI role assignment for Function App (if deployed)"
+              },
+              "value": "[if(parameters('deployAzureOpenAI'), extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), parameters('functionAppPrincipalId'), variables('cognitiveServicesOpenAIUserRoleId'))), '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'functions-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'openai-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'signalr-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'storage-deployment')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage Account name"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.storageAccountName.value]"
+    },
+    "storageTableEndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage Account Table endpoint"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.tableEndpoint.value]"
+    },
+    "signalRName": {
+      "type": "string",
+      "metadata": {
+        "description": "SignalR Service name"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'signalr-deployment'), '2025-04-01').outputs.signalRName.value]"
+    },
+    "signalREndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "SignalR Service endpoint"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'signalr-deployment'), '2025-04-01').outputs.endpoint.value]"
+    },
+    "signalRConnectionString": {
+      "type": "string",
+      "metadata": {
+        "description": "SignalR Service connection string"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'signalr-deployment'), '2025-04-01').outputs.connectionString.value]"
+    },
+    "frontendUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Frontend URL (manually deployed)"
+      },
+      "value": "https://agreeable-pebble-05aa6201e.1.azurestaticapps.net"
+    },
+    "functionAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Function App name"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-deployment'), '2025-04-01').outputs.functionAppName.value]"
+    },
+    "functionAppUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Function App default hostname"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-deployment'), '2025-04-01').outputs.defaultHostname.value]"
+    },
+    "appInsightsName": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights name"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-deployment'), '2025-04-01').outputs.appInsightsName.value]"
+    },
+    "appInsightsInstrumentationKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights instrumentation key"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-deployment'), '2025-04-01').outputs.instrumentationKey.value]"
+    },
+    "openAIName": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure OpenAI name (if deployed)"
+      },
+      "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.openAIName.value, '')]"
+    },
+    "openAIEndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure OpenAI endpoint (if deployed)"
+      },
+      "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.endpoint.value, '')]"
+    },
+    "gpt4DeploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "GPT-4 deployment name (if deployed)"
+      },
+      "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt4DeploymentName.value, '')]"
+    },
+    "gpt4VisionDeploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "GPT-4 Vision deployment name (if deployed)"
+      },
+      "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt4VisionDeploymentName.value, '')]"
+    },
+    "gpt52ChatDeploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "GPT-5.2-chat deployment name (if deployed)"
+      },
+      "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt52ChatDeploymentName.value, '')]"
+    },
+    "deploymentSummary": {
+      "type": "object",
+      "metadata": {
+        "description": "Deployment summary"
+      },
+      "value": {
+        "environment": "[parameters('environment')]",
+        "location": "[parameters('location')]",
+        "storageAccount": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.storageAccountName.value]",
+        "signalR": "[reference(resourceId('Microsoft.Resources/deployments', 'signalr-deployment'), '2025-04-01').outputs.signalRName.value]",
+        "frontend": "CLI-deployed (https://agreeable-pebble-05aa6201e.1.azurestaticapps.net)",
+        "functionApp": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-deployment'), '2025-04-01').outputs.functionAppName.value]",
+        "appInsights": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-deployment'), '2025-04-01').outputs.appInsightsName.value]"
+      }
+    }
+  }
+}

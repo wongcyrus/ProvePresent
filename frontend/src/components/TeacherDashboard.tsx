@@ -19,6 +19,8 @@ import * as signalR from '@microsoft/signalr';
 import { ChainManagementControls } from './ChainManagementControls';
 import { SessionEndAndExportControls } from './SessionEndAndExportControls';
 import { SnapshotManager } from './SnapshotManager';
+import { TeacherCaptureControl, type UploadCompleteEvent, type CaptureExpiredEvent, type CaptureResultsEvent } from './TeacherCaptureControl';
+import { CaptureHistory } from './CaptureHistory';
 
 // Type definitions
 enum EntryStatus {
@@ -178,6 +180,11 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
   // SignalR connection ref
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const isConnectingRef = useRef<boolean>(false);
+
+  // Refs for TeacherCaptureControl event handlers
+  const uploadCompleteHandlerRef = useRef<((event: UploadCompleteEvent) => void) | null>(null);
+  const captureExpiredHandlerRef = useRef<((event: CaptureExpiredEvent) => void) | null>(null);
+  const captureResultsHandlerRef = useRef<((event: CaptureResultsEvent) => void) | null>(null);
 
   /**
    * Start screen sharing and continuous capture
@@ -386,6 +393,9 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
   }, [quizActive, screenStream, lastCaptureTime, captureInterval]);
 
 
+  // Calculate online student count from attendance records
+  const onlineStudentCount = attendance.filter(record => (record as any).isOnline).length;
+
   /**
    * Fetch initial session data
    * Requirements: 12.4
@@ -510,11 +520,33 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
     connection.off('attendanceUpdate');
     connection.off('chainUpdate');
     connection.off('stallAlert');
+    connection.off('uploadComplete');
+    connection.off('captureExpired');
+    connection.off('captureResults');
     
     // Register new handlers
     connection.on('attendanceUpdate', handleAttendanceUpdate);
     connection.on('chainUpdate', handleChainUpdate);
     connection.on('stallAlert', handleStallAlert);
+    
+    // Register capture event handlers
+    connection.on('uploadComplete', (event: UploadCompleteEvent) => {
+      if (uploadCompleteHandlerRef.current) {
+        uploadCompleteHandlerRef.current(event);
+      }
+    });
+    
+    connection.on('captureExpired', (event: CaptureExpiredEvent) => {
+      if (captureExpiredHandlerRef.current) {
+        captureExpiredHandlerRef.current(event);
+      }
+    });
+    
+    connection.on('captureResults', (event: CaptureResultsEvent) => {
+      if (captureResultsHandlerRef.current) {
+        captureResultsHandlerRef.current(event);
+      }
+    });
   }, [handleAttendanceUpdate, handleChainUpdate, handleStallAlert]);
 
   /**
@@ -883,7 +915,7 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
           border: '2px solid #48bb78'
         }}>
           <div style={{ fontSize: '2.5rem', fontWeight: '700', color: '#48bb78', marginBottom: '0.5rem' }}>
-            {(stats as any).onlineStudents || 0}
+            {onlineStudentCount}
           </div>
           <div style={{ color: '#718096', fontSize: '0.875rem', fontWeight: '600' }}>
             🟢 Online Now
@@ -1009,6 +1041,42 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
             // Refresh session data after ending
             fetchSessionData();
           }}
+          onError={(error) => {
+            setError(error);
+            if (onError) {
+              onError(error);
+            }
+          }}
+        />
+      </div>
+
+      {/* Teacher Capture Control */}
+      <div style={{ marginBottom: '2rem' }}>
+        <TeacherCaptureControl
+          sessionId={sessionId}
+          sessionStatus={session.status}
+          onlineStudentCount={onlineStudentCount}
+          onError={(error) => {
+            setError(error);
+            if (onError) {
+              onError(error);
+            }
+          }}
+          ref={(instance) => {
+            if (instance) {
+              // Store handler refs so SignalR can call them
+              uploadCompleteHandlerRef.current = instance.handleUploadComplete;
+              captureExpiredHandlerRef.current = instance.handleCaptureExpired;
+              captureResultsHandlerRef.current = instance.handleCaptureResults;
+            }
+          }}
+        />
+      </div>
+
+      {/* Capture History */}
+      <div style={{ marginBottom: '2rem' }}>
+        <CaptureHistory
+          sessionId={sessionId}
           onError={(error) => {
             setError(error);
             if (onError) {

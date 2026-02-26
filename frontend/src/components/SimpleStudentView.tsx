@@ -6,10 +6,12 @@
 
 import { useState, useEffect } from 'react';
 import { getAuthHeaders } from '../utils/authHeaders';
+import { formatStudentId } from '../utils/formatStudentId';
 import QRCode from 'qrcode';
 import * as signalR from '@microsoft/signalr';
 import { getCurrentLocation } from '../utils/geolocation';
 import { QuizModal } from './QuizModal';
+import { StudentCaptureUI } from './StudentCaptureUI';
 
 interface SimpleStudentViewProps {
   sessionId: string;
@@ -42,6 +44,13 @@ interface QuizQuestion {
   expiresAt: number;
 }
 
+interface CaptureRequest {
+  captureRequestId: string;
+  sasUrl: string;
+  expiresAt: number;
+  blobName: string;
+}
+
 export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: SimpleStudentViewProps) {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [status, setStatus] = useState<StudentStatus>({
@@ -57,6 +66,7 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
   const [pendingQuestion, setPendingQuestion] = useState<QuizQuestion | null>(null);
   const [cachedLocation, setCachedLocation] = useState<{ latitude: number; longitude: number; accuracy?: number } | undefined>(undefined);
   const [cachedLocationAt, setCachedLocationAt] = useState<number>(0);
+  const [captureRequest, setCaptureRequest] = useState<CaptureRequest | null>(null);
 
   const refreshLocationCache = async () => {
     try {
@@ -320,17 +330,22 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
       }
     };
     
-    // Get negotiate endpoint
+    // Get negotiate endpoint for capture events
     const getNegotiateUrl = async () => {
       const headers = await getAuthHeaders();
       
       try {
-        const response = await fetch(`${apiUrl}/sessions/${sessionId}/negotiate`, { credentials: 'include', headers });
+        // Use student/negotiate endpoint to connect to dashboard hub for capture events
+        const response = await fetch(`${apiUrl}/sessions/${sessionId}/student/negotiate`, { credentials: 'include', method: 'POST', headers });
         if (response.ok) {
-          return await response.json();
+          const data = await response.json();
+          console.log('[SignalR] Student negotiate successful');
+          return data;
+        } else {
+          console.log('[SignalR] Student negotiate failed:', response.status);
         }
       } catch (err) {
-        console.log('SignalR negotiate failed, will use polling fallback');
+        console.log('[SignalR] Negotiate error, will use polling fallback:', err);
       }
       return null;
     };
@@ -386,6 +401,26 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
           }
         });
 
+        connection.on('captureRequest', (request: any) => {
+          console.log('[SignalR] Capture request received:', request);
+          console.log('[SignalR] Setting capture state:', {
+            captureRequestId: request.captureRequestId,
+            hasSasUrl: !!request.sasUrl,
+            expiresAt: request.expiresAt
+          });
+          setCaptureRequest({
+            captureRequestId: request.captureRequestId,
+            sasUrl: request.sasUrl,
+            expiresAt: request.expiresAt,
+            blobName: request.blobName
+          });
+        });
+
+        connection.on('captureExpired', (event: any) => {
+          console.log('[SignalR] Capture expired:', event);
+          setCaptureRequest(null);
+        });
+
         connection.onreconnecting(() => {
           setConnectionStatus('connecting');
         });
@@ -402,11 +437,12 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
         });
 
         try {
+          console.log('[SignalR] Starting connection...');
           await connection.start();
           setConnectionStatus('connected');
-          console.log('SignalR connected');
+          console.log('[SignalR] Connected successfully for capture events');
         } catch (err) {
-          console.log('SignalR connection failed');
+          console.error('[SignalR] Connection failed:', err);
           setConnectionStatus('disconnected');
           // Don't use polling - rely on SignalR automatic reconnection
         }
@@ -649,7 +685,7 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
               Logged in as:
             </div>
             <div style={{ fontSize: '0.95rem', color: '#0d47a1', fontWeight: '500', fontFamily: 'monospace' }}>
-              {studentId}
+              {formatStudentId(studentId)}
             </div>
           </div>
         </div>
@@ -868,6 +904,25 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
           onSubmit={() => {
             setPendingQuestion(null);
             checkForQuestions(); // Check for next question
+          }}
+        />
+      )}
+
+      {/* Student Capture UI */}
+      {captureRequest && (
+        <StudentCaptureUI
+          sessionId={sessionId}
+          studentId={studentId}
+          captureRequestId={captureRequest.captureRequestId}
+          sasUrl={captureRequest.sasUrl}
+          expiresAt={captureRequest.expiresAt}
+          onUploadComplete={() => {
+            console.log('Upload completed');
+            setCaptureRequest(null);
+          }}
+          onCaptureExpired={() => {
+            console.log('Capture expired');
+            setCaptureRequest(null);
           }}
         />
       )}

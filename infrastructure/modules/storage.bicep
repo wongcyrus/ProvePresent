@@ -120,6 +120,22 @@ resource quizMetricsTable 'Microsoft.Storage/storageAccounts/tableServices/table
   name: 'QuizMetrics'
 }
 
+// Student image capture tables
+resource captureRequestsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableService
+  name: 'CaptureRequests'
+}
+
+resource captureUploadsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableService
+  name: 'CaptureUploads'
+}
+
+resource captureResultsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableService
+  name: 'CaptureResults'
+}
+
 // ============================================================================
 // BLOB SERVICE
 // ============================================================================
@@ -139,6 +155,15 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01'
 resource quizSlidesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
   parent: blobService
   name: 'quiz-slides'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+// Student image captures container
+resource studentCapturesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobService
+  name: 'student-captures'
   properties: {
     publicAccess: 'None'
   }
