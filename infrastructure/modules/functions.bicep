@@ -37,7 +37,7 @@ param azureOpenAIDeployment string = ''
 @description('Azure OpenAI GPT-4 Vision deployment name (optional)')
 param azureOpenAIVisionDeployment string = ''
 
-@description('Frontend URLs for CORS configuration')
+@description('Frontend URLs for CORS configuration (fallback only - Static Web App uses linked backend)')
 param frontendUrls array = []
 
 @description('Tags to apply to the resource')

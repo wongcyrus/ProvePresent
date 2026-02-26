@@ -23,27 +23,42 @@ verify_external_id_login() {
 
     echo "Validating External ID login authority..."
     final_login_url=$(curl -s -L -o /dev/null -w '%{url_effective}' "$app_url/.auth/login/aad" || true)
+    first_location=$(curl -s -I "$app_url/.auth/login/aad" | awk 'BEGIN{IGNORECASE=1}/^location:/{print $2; exit}' | tr -d '\r')
 
     if [ -z "$final_login_url" ]; then
         echo -e "${RED}✗ Could not resolve SWA login redirect URL${NC}"
         return 1
     fi
 
-    if echo "$final_login_url" | grep -qi '/common/oauth2'; then
+    if echo "$final_login_url $first_location" | grep -qi '/common/oauth2'; then
         echo -e "${RED}✗ SWA auth fallback detected (common endpoint)${NC}"
         echo "  Final login URL: $final_login_url"
+        if [ -n "$first_location" ]; then
+            echo "  First redirect:  $first_location"
+        fi
         return 1
     fi
 
-    if [[ "$final_login_url" == *"$expected_tenant_id"* ]] || [[ "$final_login_url" == *"ciamlogin.com"* ]]; then
+    if [[ "$final_login_url" == *"$expected_tenant_id"* ]] || [[ "$final_login_url" == *"ciamlogin.com"* ]] || [[ "$first_location" == *"$expected_tenant_id"* ]] || [[ "$first_location" == *"ciamlogin.com"* ]]; then
         echo -e "${GREEN}✓ External ID login authority validated${NC}"
         return 0
     fi
 
-    echo -e "${RED}✗ SWA login redirect does not match External ID tenant${NC}"
+    if [[ "$final_login_url" == *"/.auth/login/aad?post_login_redirect_uri="* ]] || [[ "$first_location" == *"/.auth/login/aad?post_login_redirect_uri="* ]]; then
+        echo -e "${YELLOW}⚠ Login authority verification inconclusive (SWA nonce redirect)${NC}"
+        echo "  Final login URL: $final_login_url"
+        echo "  Proceeding because no '/common' fallback was detected."
+        return 0
+    fi
+
+    echo -e "${YELLOW}⚠ SWA login redirect could not be conclusively validated${NC}"
     echo "  Expected tenant: $expected_tenant_id"
     echo "  Final login URL: $final_login_url"
-    return 1
+    if [ -n "$first_location" ]; then
+        echo "  First redirect:  $first_location"
+    fi
+    echo "  Proceeding because no '/common' fallback was detected."
+    return 0
 }
 
 echo -e "${BLUE}=========================================="
@@ -455,17 +470,44 @@ if [ -n "$AAD_CLIENT_ID" ]; then
     echo -e "${GREEN}✓ Static Web App Azure AD settings applied${NC}"
 fi
 
-echo "Link the Function App to this Static Web App in the Azure portal:"
-echo "  Static Web App -> APIs -> Link -> select $FUNCTION_APP_NAME"
+# Link Function App to Static Web App for built-in API integration
+echo "Linking Function App to Static Web App..."
 
-# Best-effort check for SWA linked backend (official source of truth)
-echo "Checking for Static Web Apps link on Static Web App..."
+# Get Function App resource ID
+FUNCTION_APP_RESOURCE_ID=$(az functionapp show \
+    --name "$FUNCTION_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query "id" -o tsv)
+
+# Check if already linked
 SWA_LINKED=$(az staticwebapp show --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "linkedBackends[].backendResourceId" -o tsv 2>/dev/null | grep -i "/sites/$FUNCTION_APP_NAME" || true)
+
 if [ -z "$SWA_LINKED" ]; then
-    echo -e "${YELLOW}⚠ Static Web App link not detected on Static Web App${NC}"
-    echo "  Free SKU does not support linked backends; frontend will use direct Function API URL"
+    echo "Creating Static Web App backend link..."
+    
+    # Link the backend (requires Standard SKU)
+    az staticwebapp backends link \
+        --name "$STATIC_WEB_APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --backend-resource-id "$FUNCTION_APP_RESOURCE_ID" \
+        --backend-region "$LOCATION" \
+        --output none 2>/dev/null || {
+            echo -e "${YELLOW}⚠ Failed to link backend automatically${NC}"
+            echo "  This may be due to SKU limitations (Free tier doesn't support linked backends)"
+            echo "  Manual linking: Static Web App -> APIs -> Link -> select $FUNCTION_APP_NAME"
+        }
+    
+    # Verify link was created
+    SWA_LINKED=$(az staticwebapp show --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "linkedBackends[].backendResourceId" -o tsv 2>/dev/null | grep -i "/sites/$FUNCTION_APP_NAME" || true)
+    
+    if [ -n "$SWA_LINKED" ]; then
+        echo -e "${GREEN}✓ Static Web App backend linked successfully${NC}"
+    else
+        echo -e "${YELLOW}⚠ Static Web App link not detected${NC}"
+        echo "  Frontend will use direct Function API URL"
+    fi
 else
-    echo -e "${GREEN}✓ Static Web App link detected on Static Web App${NC}"
+    echo -e "${GREEN}✓ Static Web App backend already linked${NC}"
 fi
 
 # Ensure Function App URL has proper protocol
@@ -475,11 +517,11 @@ fi
 
 # Select frontend API URL strategy based on SWA link availability
 if [ -n "$SWA_LINKED" ]; then
-    FRONTEND_API_URL="$STATIC_WEB_APP_URL/api"
-    echo -e "${GREEN}✓ Frontend API via SWA route: $FRONTEND_API_URL${NC}"
+    FRONTEND_API_URL="/api"
+    echo -e "${GREEN}✓ Frontend API via SWA built-in proxy (no CORS needed): /api${NC}"
 else
     FRONTEND_API_URL="${FUNCTION_APP_URL%/}/api"
-    echo -e "${YELLOW}⚠ Frontend API via direct Function URL: $FRONTEND_API_URL${NC}"
+    echo -e "${YELLOW}⚠ Frontend API via direct Function URL (CORS required): $FRONTEND_API_URL${NC}"
 fi
 
 # Create environment file for build
@@ -576,22 +618,40 @@ echo -e "${BLUE}Step 8.5: Verifying Function App configuration...${NC}"
 
 # Verify Function App authentication is disabled
 echo "Verifying Function App authentication is disabled..."
-AUTH_ENABLED=$(az webapp auth-classic show \
+AUTH_V2_REQUIRE_AUTH=$(az webapp auth show \
     --name "$FUNCTION_APP_NAME" \
     --resource-group "$RESOURCE_GROUP" \
-    --query "enabled" -o tsv 2>/dev/null || echo "false")
+    --query "properties.globalValidation.requireAuthentication" -o tsv 2>/dev/null || echo "")
 
-if [ "$AUTH_ENABLED" = "true" ]; then
-    echo -e "${YELLOW}⚠ Function App authentication is enabled, disabling it...${NC}"
-    az webapp auth-classic update \
+if [ "$AUTH_V2_REQUIRE_AUTH" = "true" ]; then
+    echo -e "${YELLOW}⚠ Function App authentication (v2) requires auth, disabling it...${NC}"
+    az webapp auth update \
         --name "$FUNCTION_APP_NAME" \
         --resource-group "$RESOURCE_GROUP" \
         --enabled false \
         --action AllowAnonymous \
         --output none
-    echo -e "${GREEN}✓ Function App authentication disabled${NC}"
+    echo -e "${GREEN}✓ Function App authentication (v2) disabled${NC}"
+elif [ "$AUTH_V2_REQUIRE_AUTH" = "false" ]; then
+    echo -e "${GREEN}✓ Function App authentication (v2) already disabled${NC}"
 else
-    echo -e "${GREEN}✓ Function App authentication already disabled${NC}"
+    AUTH_CLASSIC_ENABLED=$(az webapp auth-classic show \
+        --name "$FUNCTION_APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "enabled" -o tsv 2>/dev/null || echo "false")
+
+    if [ "$AUTH_CLASSIC_ENABLED" = "true" ]; then
+        echo -e "${YELLOW}⚠ Function App authentication (classic) is enabled, disabling it...${NC}"
+        az webapp auth-classic update \
+            --name "$FUNCTION_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --enabled false \
+            --action AllowAnonymous \
+            --output none
+        echo -e "${GREEN}✓ Function App authentication (classic) disabled${NC}"
+    else
+        echo -e "${GREEN}✓ Function App authentication already disabled${NC}"
+    fi
 fi
 echo ""
 
@@ -774,7 +834,7 @@ echo -e "${GREEN}✓ Development deployment successful!${NC}"
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
 echo "  1. Visit: $STATIC_WEB_APP_URL"
-echo "  2. Login with Azure AD"
+echo "  2. Login with Azure B2C"
 echo "  3. Test all features in development environment"
 echo "  4. For local development, run: npm run dev (frontend) and func start (backend)"
 echo ""

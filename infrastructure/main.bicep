@@ -24,10 +24,11 @@ param location string = resourceGroup().location
 @maxLength(20)
 param baseName string = 'qrattendance'
 
-@description('Frontend URLs for CORS configuration (manually deployed Static Web App)')
+@description('Frontend URLs for CORS configuration (fallback only - Static Web App uses linked backend)')
 param frontendUrls array = [
-  'https://agreeable-pebble-05aa6201e.1.azurestaticapps.net'
-  'http://localhost:3000'  // For local development
+  'http://localhost:3000'  // For local development only
+  // Static Web App URLs not needed when using linked backend (reverse proxy)
+  // Add here only if direct Function App access is required
 ]
 
 @description('Deploy Azure OpenAI resource (optional)')
@@ -76,7 +77,7 @@ var appServicePlanName = 'asp-${resourceSuffix}'
 var appInsightsName = 'appi-${resourceSuffix}'
 var openAIName = 'openai-${resourceSuffix}'
 
-// CORS URLs for Function App (using CLI-deployed Static Web App)
+// CORS URLs for Function App (localhost only - Static Web App uses linked backend)
 var corsUrls = frontendUrls
 
 // ============================================================================
