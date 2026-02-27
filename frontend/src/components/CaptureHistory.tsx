@@ -294,7 +294,10 @@ export function CaptureHistory({ sessionId, onError }: CaptureHistoryProps) {
               }}>
                 Seating Positions
               </h4>
-              <SeatingGridVisualization positions={captureResults.positions} />
+              <SeatingGridVisualization 
+                positions={captureResults.positions} 
+                imageUrls={captureResults.imageUrls ? new Map(Object.entries(captureResults.imageUrls)) : undefined}
+              />
               {captureResults.analysisNotes && (
                 <div style={{
                   marginTop: '1rem',

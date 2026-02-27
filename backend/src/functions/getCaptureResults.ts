@@ -242,14 +242,44 @@ export async function getCaptureResults(
         // Parse positions from JSON string
         const positions: SeatingPosition[] = JSON.parse(captureResult.positions);
         
+        // Retrieve image URLs for all students with fresh SAS tokens
+        // Note: SAS URLs are regenerated on each request to ensure they're always valid
+        const imageUrls: Record<string, string> = {};
+        const uploadsTable = getTableClient(TableNames.CAPTURE_UPLOADS);
+        
+        try {
+          const uploads = uploadsTable.listEntities({
+            queryOptions: {
+              filter: `PartitionKey eq '${captureRequestId}'`
+            }
+          });
+          
+          for await (const upload of uploads) {
+            const studentId = upload.rowKey as string;
+            const blobUrl = upload.blobUrl as string;
+            if (studentId && blobUrl) {
+              // Generate fresh read SAS URL with 1-year expiry for long-term viewing
+              const { generateReadSasUrl } = await import('../utils/blobStorage');
+              const sasUrl = generateReadSasUrl(blobUrl);
+              imageUrls[studentId] = sasUrl;
+            }
+          }
+          
+          context.log(`Generated fresh SAS URLs for ${Object.keys(imageUrls).length} images`);
+        } catch (error: any) {
+          context.warn('Failed to retrieve image URLs:', error);
+          // Continue without images - not critical
+        }
+        
         const completedResponse: GetCaptureResultsResponse = {
           ...baseResponse,
           positions,
+          imageUrls,
           analysisNotes: captureResult.analysisNotes,
           analyzedAt: captureResult.analyzedAt
         };
 
-        context.log(`Returning completed results with ${positions.length} positions`);
+        context.log(`Returning completed results with ${positions.length} positions and ${Object.keys(imageUrls).length} images`);
         
         return {
           status: 200,

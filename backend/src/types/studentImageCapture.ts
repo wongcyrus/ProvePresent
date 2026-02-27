@@ -161,6 +161,7 @@ export interface GetCaptureResultsResponse {
   uploadedCount: number;
   totalCount: number;
   positions?: SeatingPosition[];
+  imageUrls?: Record<string, string>; // Map of studentId to image URL
   analysisNotes?: string;
   analyzedAt?: string; // ISO timestamp
   errorMessage?: string;

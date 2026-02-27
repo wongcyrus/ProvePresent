@@ -519,7 +519,7 @@ export const TeacherCaptureControl = forwardRef<TeacherCaptureControlHandle, Tea
               {/* Grid View */}
               {viewMode === 'grid' && (
                 <div style={{ marginBottom: '1rem' }}>
-                  <SeatingGridVisualization positions={results} />
+                  <SeatingGridVisualization positions={results} imageUrls={undefined} />
                 </div>
               )}
 

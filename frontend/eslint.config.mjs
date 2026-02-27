@@ -5,7 +5,7 @@ export default [
   {
     rules: {
       'react/no-unescaped-entities': 'off',
-      '@next/next/no-img-element': 'warn',
+      '@next/next/no-img-element': 'off', // Disabled: Using external blob storage URLs with SAS tokens
       'import/no-anonymous-default-export': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/purity': 'warn',

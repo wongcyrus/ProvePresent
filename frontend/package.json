@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
+    "build:clean": "rm -rf .next out node_modules/.cache && npm run build",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",

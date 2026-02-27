@@ -106,12 +106,15 @@ export function generateStudentSasUrl(
 }
 
 /**
- * Generate a read-only SAS URL for GPT image analysis
+ * Generate a read-only SAS URL for GPT image analysis or viewing
  * 
- * This function creates a time-limited, read-only SAS URL that allows GPT
- * to access uploaded student photos for position estimation. The URL:
+ * This function creates a long-lived, read-only SAS URL that allows:
+ * - GPT to access uploaded student photos for position estimation
+ * - Teachers to view student photos in the seating plan anytime
+ * 
+ * The URL:
  * - Has read-only ('r') permissions
- * - Expires after 5 minutes (300 seconds)
+ * - Expires after 1 year (365 days) for long-term viewing
  * 
  * @param blobUrl - Full blob URL (without SAS token)
  * @returns SAS URL with read-only permissions
@@ -149,14 +152,14 @@ export function generateReadSasUrl(blobUrl: string): string {
   // Create shared key credential for SAS generation
   const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
 
-  // Generate SAS token with read-only permissions and 5-minute expiry
+  // Generate SAS token with read-only permissions and 1-year expiry
   const sasToken = generateBlobSASQueryParameters(
     {
       containerName,
       blobName,
       permissions: BlobSASPermissions.parse('r'), // Read only
       startsOn: new Date(),
-      expiresOn: new Date(Date.now() + 300000), // 300 seconds (5 minutes)
+      expiresOn: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 365 days (1 year)
     },
     sharedKeyCredential
   ).toString();
