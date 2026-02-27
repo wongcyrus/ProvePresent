@@ -147,7 +147,7 @@ Be concise and accurate. Extract only what's clearly visible.`
             ]
           }
         ],
-        max_tokens: 1000,
+        max_completion_tokens: 1000,
         temperature: 0.3
       })
     });

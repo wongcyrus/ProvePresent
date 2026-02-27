@@ -134,7 +134,7 @@ async function callGPTAPI(
         },
         body: JSON.stringify({
           messages,
-          max_tokens: GPT_CONFIG.maxTokens,
+          max_completion_tokens: GPT_CONFIG.maxTokens,
           temperature: GPT_CONFIG.temperature,
         }),
         signal: controller.signal

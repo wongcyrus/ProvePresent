@@ -123,7 +123,7 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 }`
           }
         ],
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         temperature: 0.7,
         response_format: { type: "json_object" }
       })
