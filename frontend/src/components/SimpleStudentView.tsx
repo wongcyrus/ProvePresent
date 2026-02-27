@@ -370,18 +370,19 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
           .withAutomaticReconnect()
           .build();
 
-        connection.on('sessionUpdated', () => {
-          console.log('SignalR: Session updated');
+        connection.on('sessionUpdate', (update: any) => {
+          console.log('SignalR: Session update received:', update);
           fetchData();
         });
 
-        connection.on('attendanceUpdated', () => {
-          console.log('SignalR: Attendance updated');
+        connection.on('attendanceUpdate', (update: any) => {
+          console.log('SignalR: Attendance update received:', update);
           fetchData();
         });
 
-        connection.on('chainUpdated', () => {
-          console.log('SignalR: Chain updated');
+        connection.on('chainUpdate', (update: any) => {
+          console.log('SignalR: Chain update received:', update);
+          // Immediately fetch latest data to get new holder status
           fetchData();
         });
 
