@@ -486,6 +486,7 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
   }, [status.isHolder, status.holderTokenUrl]);
 
   // Poll for new tokens every 5 seconds when holder
+  // This is REQUIRED because tokens expire and need fresh URLs
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!status.isHolder) {
@@ -500,7 +501,8 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
     return () => clearInterval(pollInterval);
   }, [status.isHolder]);
 
-  // Poll for status changes when NOT a holder (for when SignalR is unavailable)
+  // Poll for status changes when NOT a holder (FALLBACK for when SignalR is unavailable)
+  // This ensures the app works in local dev and handles SignalR disconnections gracefully
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     // Only poll if not connected via SignalR and not a holder
@@ -525,7 +527,8 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
     };
   }, [connectionStatus, status.isHolder, sessionId, studentId]);
 
-  // Poll for quiz questions only if SignalR is not connected
+  // Poll for quiz questions only if SignalR is not connected (FALLBACK)
+  // This ensures quiz feature works in local dev and handles SignalR disconnections
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     // Don't poll if SignalR is connected - it will push updates
@@ -546,7 +549,7 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
       console.log('[Quiz] Cleaning up polling interval');
       clearInterval(pollInterval);
     };
-  }, [connectionStatus, sessionId, studentId]); // Re-run when connection status or session changes
+  }, [connectionStatus, sessionId, studentId]);
 
   // Countdown timer for token expiration
   /* eslint-disable react-hooks/exhaustive-deps */

@@ -106,7 +106,8 @@ const onlineStudentCount = attendance.filter(record =>
 - `POST /api/sessions/{sessionId}/capture/{captureRequestId}/upload` - Notify upload
 
 ### Background
-- `processCaptureTimeout` - Timer trigger (every 10s) to handle timeouts
+- **Durable Functions Orchestrator** - Event-driven timeout handling with durable timers
+- **Activity Function** - Processes expired captures and triggers GPT analysis
 
 ## GPT-4o Position Estimation
 
@@ -188,7 +189,8 @@ Broadcast to user t-cywong@stu.vtc.edu.hk successful
 - `backend/src/functions/initiateImageCapture.ts` - Initiate capture
 - `backend/src/functions/studentNegotiate.ts` - Student SignalR connection
 - `backend/src/functions/notifyImageUpload.ts` - Handle upload notifications
-- `backend/src/functions/processCaptureTimeout.ts` - Timeout handler
+- `backend/src/functions/captureTimeoutOrchestrator.ts` - Durable orchestrator for timeouts
+- `backend/src/functions/processCaptureTimeoutActivity.ts` - Activity function for timeout processing
 - `backend/src/functions/getCaptureResults.ts` - Get analysis results
 - `backend/src/functions/getCaptureHistory.ts` - Get capture history
 - `backend/src/utils/signalrBroadcast.ts` - Fixed user-specific broadcast

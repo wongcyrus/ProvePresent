@@ -19,7 +19,8 @@
     "@azure/functions": "^4.11.1",
     "@azure/identity": "^4.13.0",
     "@azure/storage-blob": "^12.30.0",
-    "@azure/web-pubsub": "^1.2.0"
+    "@azure/web-pubsub": "^1.2.0",
+    "durable-functions": "^3.3.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",

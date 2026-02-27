@@ -171,6 +171,8 @@ export function generateReadSasUrl(blobUrl: string): string {
  * This function checks if a student's uploaded photo exists in blob storage.
  * Used to validate upload completion before recording in the database.
  * 
+ * Handles both URL-encoded and unencoded blob names for compatibility.
+ * 
  * @param blobName - Full blob name (e.g., "{sessionId}/{captureRequestId}/{studentId}.jpg")
  * @returns True if blob exists, false otherwise
  * @throws Error if connection string is invalid or storage is unreachable
@@ -187,10 +189,32 @@ export async function verifyBlobExists(blobName: string): Promise<boolean> {
   try {
     const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     const containerClient = blobServiceClient.getContainerClient(STUDENT_CAPTURES_CONTAINER);
+    
+    // First, try with the blob name as provided (should be unencoded)
     const blobClient = containerClient.getBlobClient(blobName);
-
-    // Check if blob exists
-    return await blobClient.exists();
+    let exists = await blobClient.exists();
+    
+    if (exists) {
+      console.log(`Blob found with unencoded name: ${blobName}`);
+      return true;
+    }
+    
+    // If not found and blob name contains special characters, try with those encoded
+    // This handles cases where @ or other special chars might be encoded in the blob name
+    if (blobName.includes('@')) {
+      const encodedBlobName = blobName.replace(/@/g, '%40');
+      console.log(`Blob not found with unencoded name, trying with encoded @: ${encodedBlobName}`);
+      const encodedBlobClient = containerClient.getBlobClient(encodedBlobName);
+      exists = await encodedBlobClient.exists();
+      
+      if (exists) {
+        console.log(`Blob found with encoded @ character: ${encodedBlobName}`);
+        return true;
+      }
+    }
+    
+    console.log(`Blob not found with either encoding: ${blobName}`);
+    return false;
   } catch (error) {
     // Log error but don't throw - return false for non-existent blobs
     console.error(`Error verifying blob existence for ${blobName}:`, error);

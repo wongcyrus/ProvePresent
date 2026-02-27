@@ -78,16 +78,25 @@ Consider:
  * Parse GPT response to extract JSON
  */
 function parseGPTResponse(content: string): GPTAnalysisResponse {
+  // Check if GPT refused the request
+  if (content.toLowerCase().includes("i'm unable") || 
+      content.toLowerCase().includes("i cannot") ||
+      content.toLowerCase().includes("i can't")) {
+    throw new Error(`GPT refused the request: ${content.substring(0, 200)}`);
+  }
+  
   // Try to extract JSON from code blocks first
   const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
                     content.match(/```\n([\s\S]*?)\n```/);
   
-  const jsonStr = jsonMatch ? jsonMatch[1] : content;
+  const jsonStr = jsonMatch ? jsonMatch[1] : content.trim();
   
   try {
     return JSON.parse(jsonStr) as GPTAnalysisResponse;
   } catch (error) {
-    throw new Error(`Failed to parse GPT response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Provide more context in the error
+    const preview = content.substring(0, 200);
+    throw new Error(`Failed to parse GPT response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}. Response preview: ${preview}`);
   }
 }
 

@@ -36,7 +36,8 @@ REQUIRED_FUNCTIONS=(
     "initiateImageCapture"
     "studentNegotiate"
     "notifyImageUpload"
-    "processCaptureTimeout"
+    "captureTimeoutOrchestrator"
+    "processCaptureTimeoutActivity"
     "getCaptureResults"
     "getCaptureHistory"
 )

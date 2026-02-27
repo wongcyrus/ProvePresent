@@ -21,7 +21,7 @@ process.env.AZURE_OPENAI_DEPLOYMENT = 'gpt-5.2-chat';
 
 import { initiateImageCapture } from '../../functions/initiateImageCapture';
 import { notifyImageUpload } from '../../functions/notifyImageUpload';
-import { processCaptureTimeout } from '../../functions/processCaptureTimeout';
+import { processCaptureTimeoutActivity } from '../../functions/processCaptureTimeoutActivity';
 import { getCaptureResults } from '../../functions/getCaptureResults';
 import { 
   createCaptureRequest, 
@@ -247,7 +247,7 @@ describe('End-to-End Capture Flow Integration Test', () => {
     });
 
     // ========================================================================
-    // STEP 3: Simulate timeout (modify capture request to be expired)
+    // STEP 3: Simulate timeout (call activity function directly)
     // ========================================================================
     console.log('\n=== STEP 3: Simulate timeout ===');
     
@@ -255,13 +255,14 @@ describe('End-to-End Capture Flow Integration Test', () => {
     const captureRequest = await getCaptureRequest(captureRequestId);
     expect(captureRequest).toBeDefined();
     
-    // Update to expired status (in real scenario, timer function would do this)
+    // Update to expired status (in real scenario, orchestrator would trigger this)
     const expiredTime = new Date(Date.now() - 1000).toISOString(); // 1 second ago
     captureRequest!.expiresAt = expiredTime;
     
-    // Process timeout
+    // Process timeout using the activity function directly
+    // (In production, the orchestrator would call this)
     const timeoutContext = createMockContext();
-    await processCaptureTimeout(undefined as any, timeoutContext);
+    await processCaptureTimeoutActivity(captureRequestId, timeoutContext);
     
     // Verify captureExpired event was sent
     const captureExpiredEvents = mockSignalREvents.filter(e => e.eventName === 'captureExpired');

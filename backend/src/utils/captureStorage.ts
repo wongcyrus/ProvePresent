@@ -206,11 +206,14 @@ export async function updateCaptureRequest(
 // ============================================================================
 
 /**
- * Create a new capture upload record
+ * Create or update a capture upload record
  * 
- * @param captureUpload - CaptureUpload entity to create
- * @returns Created entity
- * @throws Error if creation fails after retries
+ * Uses upsert to handle duplicate upload notifications gracefully (e.g., from retries).
+ * If the entity already exists, it will be updated instead of throwing an error.
+ * 
+ * @param captureUpload - CaptureUpload entity to create or update
+ * @returns Created/updated entity
+ * @throws Error if operation fails after retries
  * 
  * Validates: Requirements 8.2
  */
@@ -220,7 +223,8 @@ export async function createCaptureUpload(
   const table = getTableClient(CaptureTableNames.CAPTURE_UPLOADS);
   
   return withRetry(async () => {
-    await table.createEntity(captureUpload);
+    // Use upsert instead of create to handle retries gracefully
+    await table.upsertEntity(captureUpload, 'Replace');
     return captureUpload;
   }, `createCaptureUpload(${captureUpload.partitionKey}/${captureUpload.rowKey})`);
 }

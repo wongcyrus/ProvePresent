@@ -13,6 +13,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import * as df from 'durable-functions';
 import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 import { randomUUID } from 'crypto';
@@ -233,6 +234,55 @@ export async function initiateImageCapture(
     context.log(`Stored capture request in Table Storage: ${captureRequestId}`);
 
     // ========================================================================
+    // Step 7.5: Start Durable Orchestrator for timeout handling
+    // ========================================================================
+    
+    const client = df.getClient(context);
+    
+    const orchestratorInput = {
+      captureRequestId,
+      expiresAt: expiresAt.toISOString(),
+      sessionId
+    };
+    
+    try {
+      const instanceId = await client.startNew(
+        'captureTimeoutOrchestrator',
+        {
+          instanceId: captureRequestId, // Use captureRequestId as instance ID
+          input: orchestratorInput
+        }
+      );
+      
+      context.log(`Started orchestrator instance: ${instanceId}`);
+      context.log(`Orchestrator input: ${JSON.stringify(orchestratorInput)}`);
+      
+    } catch (error: any) {
+      context.error(`Failed to start orchestrator: ${error.message}`);
+      logError(
+        context,
+        'Failed to start timeout orchestrator',
+        error,
+        {
+          sessionId,
+          captureRequestId
+        }
+      );
+      
+      return {
+        status: 500,
+        jsonBody: {
+          error: {
+            code: CaptureErrorCode.INTERNAL_ERROR,
+            message: 'Failed to start timeout orchestrator',
+            details: error.message,
+            timestamp: Date.now()
+          }
+        }
+      };
+    }
+
+    // ========================================================================
     // Step 8: Broadcast capture request via SignalR
     // ========================================================================
     
@@ -327,10 +377,11 @@ export async function initiateImageCapture(
   }
 }
 
-// Register the Azure Function
+// Register the Azure Function with Durable Client input binding
 app.http('initiateImageCapture', {
   methods: ['POST'],
   route: 'sessions/{sessionId}/capture/initiate',
   authLevel: 'anonymous',
+  extraInputs: [df.input.durableClient()],
   handler: initiateImageCapture
 });

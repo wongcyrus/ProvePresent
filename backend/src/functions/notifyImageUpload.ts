@@ -15,6 +15,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import * as df from 'durable-functions';
 import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
 import {
   NotifyUploadRequest,
@@ -158,6 +159,7 @@ export async function notifyImageUpload(
     }
 
     context.log(`Upload notification - Session: ${sessionId}, Capture: ${captureRequestId}, Blob: ${blobName}`);
+    context.log(`Blob name details - Length: ${blobName.length}, Contains @: ${blobName.includes('@')}, Contains %40: ${blobName.includes('%40')}`);
 
     // ========================================================================
     // Task 5.2: Validate timing and blob existence
@@ -285,6 +287,34 @@ export async function notifyImageUpload(
     context.log(`Broadcast uploadComplete event to teacher`);
 
     // ========================================================================
+    // Task 6.2-6.5: Check for early termination and raise external event
+    // ========================================================================
+    
+    // Check if all students have uploaded
+    if (uploadedCount === totalCount) {
+      context.log(`All students uploaded for capture: ${captureRequestId} (${uploadedCount}/${totalCount})`);
+      
+      // Get Durable Functions client
+      const client = df.getClient(context);
+      
+      try {
+        // Raise external event to orchestrator for early termination
+        await client.raiseEvent(
+          captureRequestId, // instance ID (same as captureRequestId)
+          'allUploadsComplete', // event name
+          { uploadedCount, totalCount } // event payload
+        );
+        
+        context.log(`Raised allUploadsComplete event for capture: ${captureRequestId}`);
+        
+      } catch (error: any) {
+        // Log warning but don't fail the upload notification
+        // Orchestrator will still complete via timer if event fails
+        context.warn(`Failed to raise external event for early termination: ${error.message} (captureRequestId: ${captureRequestId}, uploadedCount: ${uploadedCount}/${totalCount})`);
+      }
+    }
+
+    // ========================================================================
     // Task 5.5: Return success response
     // ========================================================================
     
@@ -339,5 +369,6 @@ app.http('notifyImageUpload', {
   methods: ['POST'],
   route: 'sessions/{sessionId}/capture/{captureRequestId}/upload',
   authLevel: 'anonymous',
+  extraInputs: [df.input.durableClient()],
   handler: notifyImageUpload
 });

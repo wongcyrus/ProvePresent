@@ -28,7 +28,7 @@ The student image capture and seating position estimation feature requires the f
 - **Purpose**: Azure OpenAI endpoint for chat/vision APIs used by quiz generation and seating estimation
 - **Used in**:
   - `backend/src/utils/gptPositionEstimation.ts` - Position analysis
-  - `backend/src/functions/processCaptureTimeout.ts` - Model name reference
+  - `backend/src/functions/processCaptureTimeoutActivity.ts` - Activity function for timeout processing
 - **Format**: Azure OpenAI endpoint URL
 - **Example**: `https://myopenai.openai.azure.com/`
 
@@ -43,7 +43,7 @@ The student image capture and seating position estimation feature requires the f
 - **Purpose**: Deployment name for chat model (question generation and default model reference)
 - **Used in**:
   - `backend/src/utils/gptPositionEstimation.ts` - API calls
-  - `backend/src/functions/processCaptureTimeout.ts` - Result metadata
+  - `backend/src/functions/processCaptureTimeoutActivity.ts` - Result metadata
 - **Format**: Deployment name string
 - **Default**: `gpt-5.2-chat`
 - **Example**: `gpt-5.2-chat`
@@ -79,6 +79,7 @@ Each function validates required environment variables before use:
 
 - **Capture Initiation**: Requires `AzureWebJobsStorage` and `SIGNALR_CONNECTION_STRING`
 - **Upload Notification**: Requires `AzureWebJobsStorage` and `SIGNALR_CONNECTION_STRING`
+- **Timeout Orchestrator**: Requires `AzureWebJobsStorage` (for durable state)
 - **Timeout Processing**: Requires all three services (Storage, SignalR, OpenAI)
 - **Position Estimation**: Requires `AZURE_OPENAI_*` variables
 

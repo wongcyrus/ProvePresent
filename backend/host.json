@@ -15,6 +15,29 @@
   "extensions": {
     "http": {
       "routePrefix": "api"
+    },
+    "durableTask": {
+      "hubName": "CaptureTaskHub",
+      "storageProvider": {
+        "connectionStringName": "AzureWebJobsStorage",
+        "controlQueueBatchSize": 32,
+        "partitionCount": 4,
+        "controlQueueVisibilityTimeout": "00:05:00",
+        "workItemQueueVisibilityTimeout": "00:05:00",
+        "maxQueuePollingInterval": "00:00:30"
+      },
+      "tracing": {
+        "traceInputsAndOutputs": true,
+        "traceReplayEvents": false
+      },
+      "notifications": {
+        "eventGrid": {
+          "topicEndpoint": "",
+          "keySettingName": ""
+        }
+      },
+      "maxConcurrentActivityFunctions": 10,
+      "maxConcurrentOrchestratorFunctions": 10
     }
   }
 }

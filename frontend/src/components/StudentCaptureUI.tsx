@@ -112,21 +112,82 @@ export function StudentCaptureUI({
   const startCamera = async () => {
     try {
       setErrorMessage(null);
+      console.log('[Camera] Requesting camera access...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
       });
       
+      console.log('[Camera] Stream obtained:', stream.getVideoTracks().length, 'video tracks');
+      console.log('[Camera] Video track settings:', stream.getVideoTracks()[0]?.getSettings());
       streamRef.current = stream;
       
+      // Set showCamera first to render the video element
+      setShowCamera(true);
+      
+      // Wait for next tick to ensure video element is rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        console.log('[Camera] Video element found, setting srcObject...');
+        const video = videoRef.current;
+        video.srcObject = stream;
+        
+        // Wait for video to be ready
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            console.error('[Camera] Timeout waiting for video metadata');
+            reject(new Error('Video metadata timeout'));
+          }, 5000);
+          
+          const onLoadedMetadata = () => {
+            clearTimeout(timeout);
+            console.log('[Camera] Video metadata loaded:', {
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              readyState: video.readyState
+            });
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('error', onError);
+            resolve();
+          };
+          
+          const onError = (e: Event) => {
+            clearTimeout(timeout);
+            console.error('[Camera] Video error event:', e);
+            video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('error', onError);
+            reject(new Error('Video failed to load'));
+          };
+          
+          video.addEventListener('loadedmetadata', onLoadedMetadata);
+          video.addEventListener('error', onError);
+          
+          // If metadata is already loaded, resolve immediately
+          if (video.readyState >= 1) {
+            console.log('[Camera] Video metadata already loaded');
+            clearTimeout(timeout);
+            onLoadedMetadata();
+          }
+        });
+        
+        console.log('[Camera] Starting video playback...');
+        try {
+          await video.play();
+          console.log('[Camera] Video playing successfully');
+        } catch (playError) {
+          console.error('[Camera] Play error:', playError);
+          throw playError;
+        }
+      } else {
+        console.error('[Camera] Video element not found after render');
+        throw new Error('Video element not available');
       }
       
-      setShowCamera(true);
+      console.log('[Camera] Camera started successfully');
     } catch (err) {
-      console.error('Camera access error:', err);
+      console.error('[Camera] Camera access error:', err);
       
       // Determine specific error message based on error type
       let errorMsg = 'Camera access is required to capture your photo. Please enable camera permissions in your browser settings.';
@@ -140,10 +201,18 @@ export function StudentCaptureUI({
           errorMsg = 'Camera is already in use by another application. Please close other apps using the camera and try again.';
         } else if (err.name === 'OverconstrainedError') {
           errorMsg = 'Camera does not meet requirements. Please try with a different camera.';
+        } else if (err.message.includes('Video failed to load')) {
+          errorMsg = 'Failed to initialize camera video. Please refresh the page and try again.';
         }
       }
       
       setErrorMessage(errorMsg);
+      
+      // Clean up stream if it was created
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
     }
   };
 
@@ -282,11 +351,20 @@ export function StudentCaptureUI({
   const uploadPhoto = async () => {
     if (!photo || !sasUrl || !captureRequestId) return;
 
+    console.log('[Upload] Starting upload process...', {
+      photoSize: photo.size,
+      photoType: photo.type,
+      captureRequestId,
+      sasUrlLength: sasUrl.length
+    });
+
     setUploadStatus('uploading');
     setErrorMessage(null);
 
     const attemptUpload = async (isRetry: boolean = false): Promise<boolean> => {
       try {
+        console.log(`[Upload] ${isRetry ? 'Retry' : 'First'} attempt - uploading to blob storage...`);
+        
         // Upload directly to blob storage
         const uploadResponse = await fetch(sasUrl, {
           method: 'PUT',
@@ -297,9 +375,19 @@ export function StudentCaptureUI({
           body: photo,
         });
 
+        console.log('[Upload] Blob upload response:', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          ok: uploadResponse.ok
+        });
+
         if (!uploadResponse.ok) {
-          throw new Error(`Upload failed: ${uploadResponse.status}`);
+          const errorText = await uploadResponse.text();
+          console.error('[Upload] Blob upload failed:', errorText);
+          throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
         }
+
+        console.log('[Upload] Blob upload successful, notifying backend...');
 
         // Notify backend of completion
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -307,7 +395,14 @@ export function StudentCaptureUI({
         
         // Extract blob name from SAS URL
         const url = new URL(sasUrl);
-        const blobName = url.pathname.split('/').slice(2).join('/'); // Remove /container/ prefix
+        const blobName = decodeURIComponent(url.pathname.split('/').slice(2).join('/')); // Remove /container/ prefix and decode
+        
+        console.log('[Upload] Notifying backend:', {
+          apiUrl,
+          sessionId,
+          captureRequestId,
+          blobName
+        });
         
         const notifyResponse = await fetch(
           `${apiUrl}/sessions/${sessionId}/capture/${captureRequestId}/upload`,
@@ -319,10 +414,20 @@ export function StudentCaptureUI({
           }
         );
 
+        console.log('[Upload] Backend notification response:', {
+          status: notifyResponse.status,
+          statusText: notifyResponse.statusText,
+          ok: notifyResponse.ok
+        });
+
         if (!notifyResponse.ok) {
           const errorData = await notifyResponse.json();
+          console.error('[Upload] Backend notification failed:', errorData);
           throw new Error(errorData.error?.message || 'Failed to notify upload');
         }
+
+        const responseData = await notifyResponse.json();
+        console.log('[Upload] Backend notification successful:', responseData);
 
         setUploadStatus('success');
         
@@ -336,12 +441,18 @@ export function StudentCaptureUI({
         return true;
 
       } catch (err) {
-        console.error(`Upload ${isRetry ? 'retry' : 'attempt'} error:`, err);
+        console.error(`[Upload] ${isRetry ? 'Retry' : 'Attempt'} error:`, err);
         
         // Determine error message based on error type
         let errorMsg = 'Upload failed. Please check your connection and try again.';
         
         if (err instanceof Error) {
+          console.error('[Upload] Error details:', {
+            name: err.name,
+            message: err.message,
+            stack: err.stack
+          });
+          
           if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
             errorMsg = 'Network error. Please check your internet connection and try again.';
           } else if (err.message.includes('timeout')) {
@@ -350,6 +461,8 @@ export function StudentCaptureUI({
             errorMsg = 'Time expired. The capture window has closed.';
           } else if (err.message.includes('403') || err.message.includes('401')) {
             errorMsg = 'Upload not authorized. The capture window may have expired.';
+          } else {
+            errorMsg = `Upload failed: ${err.message}`;
           }
         }
         
@@ -362,11 +475,13 @@ export function StudentCaptureUI({
     const success = await attemptUpload(false);
     
     if (!success) {
+      console.log('[Upload] First attempt failed, will retry in 2 seconds...');
       // Automatic retry after 2 seconds
       setTimeout(async () => {
         const retrySuccess = await attemptUpload(true);
         
         if (!retrySuccess) {
+          console.log('[Upload] Retry also failed, setting error status');
           setUploadStatus('error');
           // Photo is kept in memory for manual retry
         }
@@ -530,7 +645,13 @@ export function StudentCaptureUI({
 
         {/* Camera View */}
         {showCamera && !photo && (
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ 
+            marginBottom: '1rem',
+            position: 'relative',
+            backgroundColor: '#000',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}>
             <video
               ref={videoRef}
               autoPlay
@@ -538,10 +659,28 @@ export function StudentCaptureUI({
               muted
               style={{
                 width: '100%',
+                height: 'auto',
+                minHeight: '300px',
+                maxHeight: '500px',
                 borderRadius: '8px',
-                backgroundColor: '#000'
+                backgroundColor: '#000',
+                display: 'block',
+                objectFit: 'cover',
+                transform: 'scaleX(-1)' // Mirror the video for selfie mode
               }}
             />
+            {/* Loading indicator while video initializes */}
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: 'white',
+              fontSize: '1rem',
+              pointerEvents: 'none'
+            }}>
+              {videoRef.current?.readyState === 0 && '⏳ Initializing camera...'}
+            </div>
             <canvas ref={canvasRef} style={{ display: 'none' }} />
             
             <div style={{
