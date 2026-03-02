@@ -58,6 +58,9 @@ param gpt4VisionModelVersion string = 'vision-preview'
 @description('Deploy GPT-4 Vision model (required for Live Quiz feature)')
 param deployVisionModel bool = true
 
+@description('Deploy GPT-4 base model')
+param deployGpt4Model bool = true
+
 @description('GPT-5.2-chat model deployment name')
 param gpt52ChatDeploymentName string = 'gpt-5.2-chat'
 
@@ -69,6 +72,15 @@ param gpt52ChatModelVersion string = '2026-02-10'
 
 @description('Deploy GPT-5.2-chat model (preview - most advanced model)')
 param deployGpt52ChatModel bool = true
+
+@description('GPT-4 deployment capacity (TPM in thousands)')
+param gpt4Capacity int = 10
+
+@description('GPT-4 Vision deployment capacity (TPM in thousands)')
+param gpt4VisionCapacity int = 10
+
+@description('GPT-5.2-chat deployment capacity (TPM in thousands)')
+param gpt52ChatCapacity int = 250
 
 @description('Tags to apply to all resources')
 param tags object = {
@@ -141,10 +153,14 @@ module openai 'modules/openai.bicep' = if (deployAzureOpenAI) {
     gpt4VisionModelName: gpt4VisionModelName
     gpt4VisionModelVersion: gpt4VisionModelVersion
     deployVisionModel: deployVisionModel
+    deployGpt4Model: deployGpt4Model
     gpt52ChatDeploymentName: gpt52ChatDeploymentName
     gpt52ChatModelName: gpt52ChatModelName
     gpt52ChatModelVersion: gpt52ChatModelVersion
     deployGpt52ChatModel: deployGpt52ChatModel
+    gpt4Capacity: gpt4Capacity
+    gpt4VisionCapacity: gpt4VisionCapacity
+    gpt52ChatCapacity: gpt52ChatCapacity
     tags: tags
   }
 }

@@ -14,7 +14,7 @@ NC='\033[0m'
 # Configuration
 RESOURCE_GROUP="rg-qr-attendance-prod"
 LOCATION="eastus2"
-DEPLOYMENT_NAME="prod-full-$(date +%Y%m%d-%H%M%S)"
+DEPLOYMENT_NAME="qr-attendance-prod-deployment"
 DESIRED_SWA_SKU="Standard"
 
 verify_external_id_login() {
@@ -66,21 +66,45 @@ echo "QR Chain Attendance - Full Production Deployment"
 echo -e "==========================================${NC}"
 echo ""
 
-# Step 0: Get Azure AD credentials automatically
-echo -e "${BLUE}Step 0: Azure AD Configuration${NC}"
+# Step 0: Load and validate credentials
+echo -e "${BLUE}Step 0: Loading credentials...${NC}"
 
-# Require explicit auth credentials for the correct auth tenant
-AAD_CLIENT_ID=""
-AAD_CLIENT_SECRET=""
-
-# Load explicit auth credentials (preferred: External ID)
-if [ -f ".external-id-credentials" ]; then
-    source ./.external-id-credentials
-else
-    echo -e "${RED}✗ Missing .external-id-credentials${NC}"
-    echo "  Deployment requires explicit External ID/B2C credentials to avoid tenant drift."
+# Check if credentials file exists
+if [ ! -f ".external-id-credentials" ]; then
+    echo -e "${RED}✗ Missing .external-id-credentials file${NC}"
+    echo ""
+    echo "This file must exist in the project root and contain:"
+    echo "  - AAD_CLIENT_ID"
+    echo "  - AAD_CLIENT_SECRET"
+    echo "  - TENANT_ID"
+    echo "  - EXTERNAL_ID_ISSUER"
+    echo ""
+    echo "Please create this file before running deployment."
     exit 1
 fi
+
+# Load credentials
+echo "Loading credentials from .external-id-credentials..."
+source ./.external-id-credentials
+
+# Validate required variables
+if [ -z "$AAD_CLIENT_ID" ] || [ -z "$AAD_CLIENT_SECRET" ] || [ -z "$TENANT_ID" ]; then
+    echo -e "${RED}✗ Missing required credentials in .external-id-credentials${NC}"
+    echo ""
+    echo "Required variables:"
+    echo "  - AAD_CLIENT_ID: ${AAD_CLIENT_ID:-NOT SET}"
+    echo "  - AAD_CLIENT_SECRET: ${AAD_CLIENT_SECRET:-NOT SET}"
+    echo "  - TENANT_ID: ${TENANT_ID:-NOT SET}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Credentials loaded successfully${NC}"
+echo "  Tenant ID: $TENANT_ID"
+echo "  Client ID: ${AAD_CLIENT_ID:0:8}..."
+echo ""
+
+# Step 0.5: Azure AD Configuration
+echo -e "${BLUE}Step 0.5: Validating Azure AD Configuration${NC}"
 
 # Validate External ID configuration to prevent login redirect loops
 if [ -z "$EXTERNAL_ID_ISSUER" ] || [ "$EXTERNAL_ID_ISSUER" = "null" ]; then
@@ -687,6 +711,37 @@ fi
 
 cd ..
 echo -e "${GREEN}✓ Frontend deployed${NC}"
+echo ""
+
+# Step 8.5: Configure SignalR CORS with Static Web App URL
+echo -e "${BLUE}Step 8.5: Configuring SignalR CORS...${NC}"
+
+# Get Static Web App hostname
+STATIC_WEB_APP_HOSTNAME=$(az staticwebapp show --name "$STATIC_WEB_APP" --resource-group "$RESOURCE_GROUP" --query "defaultHostname" -o tsv 2>/dev/null)
+
+if [ -n "$STATIC_WEB_APP_HOSTNAME" ] && [ "$STATIC_WEB_APP_HOSTNAME" != "null" ]; then
+    echo "Static Web App URL: https://$STATIC_WEB_APP_HOSTNAME"
+    
+    # Get SignalR name
+    SIGNALR_NAME=$(az signalr list --resource-group "$RESOURCE_GROUP" --query "[0].name" -o tsv 2>/dev/null)
+    
+    if [ -n "$SIGNALR_NAME" ] && [ "$SIGNALR_NAME" != "null" ]; then
+        echo "Configuring CORS for SignalR: $SIGNALR_NAME"
+        
+        # Update CORS to only allow the Static Web App origin (remove wildcard)
+        az signalr cors update \
+            --name "$SIGNALR_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --allowed-origins "https://$STATIC_WEB_APP_HOSTNAME" \
+            --output none 2>/dev/null || echo -e "${YELLOW}⚠ CORS update failed${NC}"
+        
+        echo -e "${GREEN}✓ SignalR CORS configured${NC}"
+    else
+        echo -e "${YELLOW}⚠ SignalR not found, skipping CORS configuration${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠ Could not get Static Web App hostname${NC}"
+fi
 echo ""
 
 # Step 9: Verify deployment

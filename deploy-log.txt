@@ -1,0 +1,52 @@
+[0;34m==========================================
+QR Chain Attendance - Full Development Deployment
+==========================================[0m
+
+[0;34mStep 0: Loading credentials...[0m
+Loading credentials from .external-id-credentials...
+[0;32m✓ Credentials loaded successfully[0m
+  Tenant ID: 8d7e7129-267c-4ef8-b977-e744f7018b45
+  Client ID: c4a9e834...
+
+[0;34mStep 0.5: Validating Azure AD Configuration[0m
+[0;32m✓ Loaded External ID credentials[0m
+  Client ID: c4a9e834-833d-4e70-8f43-40ea88f12cab
+[0;32m✓ External ID authentication configured[0m
+  Tenant ID: 8d7e7129-267c-4ef8-b977-e744f7018b45
+
+[0;34mStep 1: Checking prerequisites...[0m
+Checking Azure CLI extensions...
+[0;32m✓ All prerequisites met[0m
+
+[0;34mStep 2: Creating resource group...[0m
+[1;33mℹ Resource group already exists[0m
+
+[0;34mStep 3: Deploying infrastructure (5-10 minutes for dev)...[0m
+WARNING: A new Bicep release is available: v0.41.2. Upgrade now by running "az bicep upgrade".
+WARNING: /home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(175,52) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(176,47) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(177,78) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(192,43) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(195,5) : Warning no-unnecessary-dependson: Remove unnecessary dependsOn entry 'storage'. [https://aka.ms/bicep/linter-diagnostics#no-unnecessary-dependson]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(196,5) : Warning no-unnecessary-dependson: Remove unnecessary dependsOn entry 'signalr'. [https://aka.ms/bicep/linter-diagnostics#no-unnecessary-dependson]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(197,5) : Warning no-unnecessary-dependson: Remove unnecessary dependsOn entry 'functions'. [https://aka.ms/bicep/linter-diagnostics#no-unnecessary-dependson]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(236,54) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(239,58) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(242,62) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(245,68) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/main.bicep(248,67) : Warning BCP318: The value of type "module | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/signalr.bicep(94,49) : Warning BCP318: The value of type "Microsoft.SignalRService/signalR | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/signalr.bicep(97,77) : Warning BCP318: The value of type "Microsoft.SignalRService/signalR | null" may be null at the start of the deployment, which would cause this access expression (and the overall deployment with it) to fail. [https://aka.ms/bicep/core-diagnostics#BCP318]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/signalr.bicep(97,111) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: function 'listKeys' [https://aka.ms/bicep/linter-diagnostics#outputs-should-not-contain-secrets]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/signalr.bicep(97,119) : Warning BCP422: A resource of type "Microsoft.SignalRService/signalR | null" may or may not exist when this function is called, which could cause the deployment to fail. [https://aka.ms/bicep/core-diagnostics#BCP422]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/signalr.bicep(97,130) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: secure value 'signalR.listKeys().primaryKey' [https://aka.ms/bicep/linter-diagnostics#outputs-should-not-contain-secrets]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/signalr.bicep(100,44) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: function 'listKeys' [https://aka.ms/bicep/linter-diagnostics#outputs-should-not-contain-secrets]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/signalr.bicep(100,52) : Warning BCP422: A resource of type "Microsoft.SignalRService/signalR | null" may or may not exist when this function is called, which could cause the deployment to fail. [https://aka.ms/bicep/core-diagnostics#BCP422]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/signalr.bicep(100,63) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: secure value 'signalR.listKeys().primaryKey ' [https://aka.ms/bicep/linter-diagnostics#outputs-should-not-contain-secrets]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/openai.bicep(164,28) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: function 'listKeys' [https://aka.ms/bicep/linter-diagnostics#outputs-should-not-contain-secrets]
+/home/developer/Documents/data-disk/QRChainAttend/infrastructure/modules/storage.bicep(212,35) : Warning outputs-should-not-contain-secrets: Outputs should not contain secrets. Found possible secret: function 'listKeys' [https://aka.ms/bicep/linter-diagnostics#outputs-should-not-contain-secrets]
+
+ERROR: {"code": "InvalidTemplateDeployment", "message": "The template deployment 'qr-attendance-dev-deployment' is not valid according to the validation procedure. The tracking id is '9be151db-069b-400d-aa07-dcb9a2f1d3f2'. See inner errors for details."}
+
+Inner Errors: 
+{"code": "715-123420", "message": "An error occurred. Please reach out to support for additional assistance."}

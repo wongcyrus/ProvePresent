@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { getAuthHeaders } from '../utils/authHeaders';
 import { useRouter } from 'next/router';
 import { SessionCreationForm } from '../components/SessionCreationForm';
-import { TeacherDashboard } from '../components/TeacherDashboard';
+import { TeacherDashboard } from '../components/TeacherDashboardWithTabs';
 import { TeacherHeader } from '../components/TeacherHeader';
 import { SessionsList } from '../components/SessionsList';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
@@ -565,62 +565,6 @@ export default function TeacherPage() {
           >
             ← Back to Sessions
           </button>
-          
-          {currentSession && (
-            <>
-              <button 
-                onClick={() => handleShowEntryQR(currentSession)}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: '#48bb78',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '0.95rem',
-                  fontWeight: '600',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(72, 187, 120, 0.2)'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.02)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(72, 187, 120, 0.3)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(72, 187, 120, 0.2)';
-                }}
-              >
-                📥 Show Entry QR
-              </button>
-              
-              <button 
-                onClick={() => handleShowExitQR(currentSession)}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: '#ed8936',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '0.95rem',
-                  fontWeight: '600',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(237, 137, 54, 0.2)'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.02)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(237, 137, 54, 0.3)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(237, 137, 54, 0.2)';
-                }}
-              >
-                📤 Show Exit QR
-              </button>
-            </>
-          )}
         </div>
         
         {currentSession && (
@@ -653,6 +597,18 @@ export default function TeacherPage() {
         <TeacherDashboard 
           sessionId={selectedSessionId}
           onError={handleError}
+          onShowEntryQR={() => {
+            const currentSession = sessions.find(s => s.sessionId === selectedSessionId);
+            if (currentSession) {
+              handleShowEntryQR(currentSession);
+            }
+          }}
+          onShowExitQR={() => {
+            const currentSession = sessions.find(s => s.sessionId === selectedSessionId);
+            if (currentSession) {
+              handleShowExitQR(currentSession);
+            }
+          }}
         />
         
         {/* QR Code Modal for Dashboard */}

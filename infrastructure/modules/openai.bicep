@@ -31,6 +31,9 @@ param gpt4VisionModelVersion string = 'vision-preview'
 @description('Deploy GPT-4 Vision model (required for Live Quiz feature)')
 param deployVisionModel bool = true
 
+@description('Deploy GPT-4 base model')
+param deployGpt4Model bool = true
+
 @description('GPT-5.2-chat model deployment name')
 param gpt52ChatDeploymentName string = 'gpt-5.2-chat'
 
@@ -42,6 +45,15 @@ param gpt52ChatModelVersion string = '2026-02-10'
 
 @description('Deploy GPT-5.2-chat model (preview - most advanced model)')
 param deployGpt52ChatModel bool = true
+
+@description('GPT-4 deployment capacity (TPM in thousands)')
+param gpt4Capacity int = 10
+
+@description('GPT-4 Vision deployment capacity (TPM in thousands)')
+param gpt4VisionCapacity int = 10
+
+@description('GPT-5.2-chat deployment capacity (TPM in thousands)')
+param gpt52ChatCapacity int = 250
 
 @description('Tags to apply to the resource')
 param tags object
@@ -76,12 +88,12 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
 // GPT-4 DEPLOYMENT (for question generation and answer evaluation)
 // ============================================================================
 
-resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = if (deployGpt4Model) {
   parent: openAI
   name: gpt4DeploymentName
   sku: {
     name: 'Standard'
-    capacity: 10
+    capacity: gpt4Capacity
   }
   properties: {
     model: {
@@ -101,7 +113,7 @@ resource gpt4VisionDeployment 'Microsoft.CognitiveServices/accounts/deployments@
   name: gpt4VisionDeploymentName
   sku: {
     name: 'Standard'
-    capacity: 10
+    capacity: gpt4VisionCapacity
   }
   properties: {
     model: {
@@ -110,9 +122,9 @@ resource gpt4VisionDeployment 'Microsoft.CognitiveServices/accounts/deployments@
       version: gpt4VisionModelVersion
     }
   }
-  dependsOn: [
+  dependsOn: deployGpt4Model ? [
     gpt4Deployment  // Deploy sequentially to avoid conflicts
-  ]
+  ] : []
 }
 
 // ============================================================================
@@ -124,7 +136,7 @@ resource gpt52ChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
   name: gpt52ChatDeploymentName
   sku: {
     name: 'GlobalStandard'
-    capacity: 250
+    capacity: gpt52ChatCapacity
   }
   properties: {
     model: {
@@ -133,9 +145,11 @@ resource gpt52ChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
       version: gpt52ChatModelVersion
     }
   }
-  dependsOn: [
+  dependsOn: deployVisionModel ? [
     gpt4VisionDeployment
-  ]
+  ] : (deployGpt4Model ? [
+    gpt4Deployment
+  ] : [])
 }
 
 // ============================================================================
@@ -155,7 +169,7 @@ output endpoint string = openAI.properties.endpoint
 output primaryKey string = openAI.listKeys().key1
 
 @description('GPT-4 deployment name')
-output gpt4DeploymentName string = gpt4Deployment.name
+output gpt4DeploymentName string = deployGpt4Model ? gpt4Deployment.name : ''
 
 @description('GPT-4 Vision deployment name (if deployed)')
 output gpt4VisionDeploymentName string = deployVisionModel ? gpt4VisionDeployment.name : ''
