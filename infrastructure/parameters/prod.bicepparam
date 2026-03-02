@@ -30,6 +30,11 @@ param gpt52ChatModelName = 'gpt-5.2-chat'
 param gpt52ChatModelVersion = '2026-02-10'
 param deployGpt52ChatModel = true
 
+// Production capacity settings
+param gpt4Capacity = 10  // 10K TPM (not deployed but kept for compatibility)
+param gpt4VisionCapacity = 10  // 10K TPM
+param gpt52ChatCapacity = 100  // 100K TPM for production workload
+
 // Tags
 param tags = {
   Environment: 'Production'

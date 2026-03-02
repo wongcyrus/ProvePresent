@@ -37,9 +37,9 @@ import { generateReadSasUrl } from './blobStorage';
  */
 const GPT_CONFIG = {
   maxTokens: 2000,
-  temperature: 0.3,
+  // temperature not set - uses default (1) for model compatibility with reasoning models
   timeoutMs: 60000, // 60 seconds
-  maxRetries: 1,
+  maxRetries: 3, // Increased for rate limit handling
   maxImagesPerRequest: 10, // GPT-5.2-chat limit
   batchSize: 10, // Process 10 images per batch
   overlapSize: 3 // Number of students to overlap between batches
@@ -218,7 +218,7 @@ async function callGPTAPI(
         body: JSON.stringify({
           messages,
           max_completion_tokens: GPT_CONFIG.maxTokens,
-          temperature: GPT_CONFIG.temperature,
+          // temperature not set - uses default (1) for model compatibility
           response_format: {
             type: 'json_schema',
             json_schema: {
@@ -236,6 +236,27 @@ async function callGPTAPI(
       
       if (!response.ok) {
         const errorText = await response.text();
+        
+        // Handle rate limit errors - retry with backoff
+        if (response.status === 429) {
+          let retryAfter = 20;
+          try {
+            const errorData = JSON.parse(errorText);
+            const match = errorData.error?.message?.match(/retry after (\d+) seconds/i);
+            if (match) {
+              retryAfter = parseInt(match[1]);
+            }
+          } catch (e) {
+            // Use default retry time
+          }
+          
+          context.log(`Rate limit hit, will retry after ${retryAfter} seconds (attempt ${attempt + 1}/${GPT_CONFIG.maxRetries + 1})`);
+          
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+          continue; // Retry
+        }
+        
         throw new Error(`GPT API error: ${response.status} - ${errorText}`);
       }
       

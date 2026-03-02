@@ -33,10 +33,10 @@ param gpt52ChatModelName = 'gpt-5.2-chat'
 param gpt52ChatModelVersion = '2026-02-10'
 param deployGpt52ChatModel = true  // Enabled - this is the only model we use
 
-// Single deployment with minimal capacity for dev
+// Single deployment with adequate capacity for dev
 param gpt4Capacity = 1  // Minimal (not deployed anyway)
 param gpt4VisionCapacity = 1  // Minimal (not deployed anyway)
-param gpt52ChatCapacity = 3  // ONLY deployment - reduced from 250
+param gpt52ChatCapacity = 50  // 50K TPM for development testing
 
 // Tags
 param tags = {

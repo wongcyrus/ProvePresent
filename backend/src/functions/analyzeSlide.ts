@@ -111,20 +111,14 @@ export async function analyzeSlide(
 
     const apiUrl = `${openaiEndpoint}/openai/deployments/${openaiDeployment}/chat/completions?api-version=2024-10-21`;
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': openaiKey
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Analyze this lecture slide and extract the following information in JSON format:
+    const requestBody = {
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analyze this lecture slide and extract the following information in JSON format:
 {
   "topic": "Main topic or concept (1-2 words)",
   "title": "Slide title if visible",
@@ -137,25 +131,76 @@ export async function analyzeSlide(
 }
 
 Be concise and accurate. Extract only what's clearly visible.`
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageDataForAI
-                }
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageDataForAI
               }
-            ]
-          }
-        ],
-        max_completion_tokens: 1000,
-        temperature: 0.3
-      })
-    });
+            }
+          ]
+        }
+      ],
+      max_completion_tokens: 1000
+      // temperature not set - uses default (1) for model compatibility
+    };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      context.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+    // Retry logic with exponential backoff for rate limits
+    let response;
+    let lastError;
+    const maxRetries = 3;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': openaiKey
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (response.ok) {
+          break; // Success, exit retry loop
+        }
+
+        const errorText = await response.text();
+        
+        // Handle rate limit errors with retry
+        if (response.status === 429) {
+          let retryAfter = 20;
+          try {
+            const errorData = JSON.parse(errorText);
+            const match = errorData.error?.message?.match(/retry after (\d+) seconds/i);
+            if (match) {
+              retryAfter = parseInt(match[1]);
+            }
+          } catch (e) {
+            // Use default retry time
+          }
+          
+          if (attempt < maxRetries - 1) {
+            context.log(`Rate limit hit, retrying after ${retryAfter} seconds (attempt ${attempt + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+            continue;
+          }
+        }
+        
+        // Non-rate-limit error or final attempt
+        context.error('OpenAI API error:', errorText);
+        throw new Error(`OpenAI API error: ${response.status}`);
+        
+      } catch (error: any) {
+        lastError = error;
+        if (attempt === maxRetries - 1) {
+          throw error;
+        }
+      }
+    }
+
+    if (!response || !response.ok) {
+      throw lastError || new Error('Failed to get response from OpenAI');
     }
 
     const aiResponse = await response.json();

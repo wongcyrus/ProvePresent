@@ -22,6 +22,9 @@ param openAIModelDeployment = 'gpt-4'
 param openAIModelName = 'gpt-4'
 param openAIModelVersion = '0613'
 
+// Staging capacity settings (moderate for testing)
+param gpt52ChatCapacity = 50  // 50K TPM for staging environment
+
 // Tags
 param tags = {
   Environment: 'Staging'
