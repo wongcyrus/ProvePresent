@@ -27,11 +27,11 @@ param gpt4VisionModelVersion = '2024-08-06'
 param deployVisionModel = false  // Disabled - not used
 param deployGpt4Model = false  // Disabled - not used
 
-// ONLY deploy GPT-5.2-chat (the model actually used in the project)
+// GPT-5.2-chat is already deployed manually - skip Bicep deployment to avoid conflicts
 param gpt52ChatDeploymentName = 'gpt-5.2-chat'
 param gpt52ChatModelName = 'gpt-5.2-chat'
 param gpt52ChatModelVersion = '2026-02-10'
-param deployGpt52ChatModel = true  // Enabled - this is the only model we use
+param deployGpt52ChatModel = true  // Enabled for automatic deployment
 
 // Single deployment with adequate capacity for dev
 param gpt4Capacity = 1  // Minimal (not deployed anyway)

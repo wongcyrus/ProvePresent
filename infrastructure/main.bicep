@@ -194,12 +194,8 @@ module rbac 'modules/rbac.bicep' = {
     functionAppPrincipalId: functions.outputs.principalId
     deployAzureOpenAI: deployAzureOpenAI
     openAIName: deployAzureOpenAI ? openai.outputs.openAIName : ''
+    openAIProjectName: deployAzureOpenAI ? openai.outputs.projectName : ''
   }
-  dependsOn: [
-    storage
-    signalr
-    functions
-  ]
 }
 
 // ============================================================================
@@ -251,6 +247,21 @@ output gpt4VisionDeploymentName string = deployAzureOpenAI ? openai.outputs.gpt4
 @description('GPT-5.2-chat deployment name (if deployed)')
 output gpt52ChatDeploymentName string = deployAzureOpenAI ? openai.outputs.gpt52ChatDeploymentName : ''
 
+@description('Foundry project name (if deployed)')
+output projectName string = deployAzureOpenAI ? openai.outputs.projectName : ''
+
+@description('Foundry project endpoint for agents (if deployed)')
+output projectEndpoint string = deployAzureOpenAI ? openai.outputs.projectEndpoint : ''
+
+@description('Azure OpenAI primary key (if deployed)')
+output openAIKey string = deployAzureOpenAI ? openai.outputs.primaryKey : ''
+
+@description('Storage connection string')
+output storageConnectionString string = storage.outputs.connectionString
+
+@description('Application Insights connection string')
+output applicationInsightsConnectionString string = appInsights.outputs.connectionString
+
 @description('Deployment summary')
 output deploymentSummary object = {
   environment: environment
@@ -260,4 +271,6 @@ output deploymentSummary object = {
   frontend: 'CLI-deployed (https://agreeable-pebble-05aa6201e.1.azurestaticapps.net)'
   functionApp: functions.outputs.functionAppName
   appInsights: appInsights.outputs.appInsightsName
+  openAI: deployAzureOpenAI ? openai.outputs.openAIName : 'Not deployed'
+  foundryProject: deployAzureOpenAI ? openai.outputs.projectName : 'Not deployed'
 }

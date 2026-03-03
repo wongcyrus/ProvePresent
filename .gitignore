@@ -95,3 +95,6 @@ production-token.txt
 .external-id-credentials
 *client*secret*
 *.secret
+
+# Agent configuration (contains sensitive data)
+.agent-config.env

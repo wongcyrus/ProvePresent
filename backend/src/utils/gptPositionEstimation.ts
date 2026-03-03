@@ -1,12 +1,14 @@
 /**
  * GPT Position Estimation Service
  * 
- * This module provides AI-powered seating position estimation using Azure OpenAI vision-capable chat models.
+ * This module provides AI-powered seating position estimation using Azure AI Foundry Agent Service.
  * It analyzes student photos to estimate their seating positions based on:
  * - Projector screen visibility and angle
  * - Projector screen size in the frame
  * - Classroom features visible in the background
  * - Relative positions compared to other students' photos
+ * 
+ * Uses managed identity authentication via agent service (no API keys).
  * 
  * Validates: Requirements 6.1, 6.2, 6.3, 6.4
  */
@@ -19,11 +21,12 @@ import {
   SeatingPosition
 } from '../types/studentImageCapture';
 import { generateReadSasUrl } from './blobStorage';
+import { getAgentClient } from './agentService';
 
 /**
- * GPT API configuration
+ * Agent configuration
  * 
- * IMPORTANT: This system uses GPT-5.2-chat which has a 10 image limit per request.
+ * IMPORTANT: This system uses the Azure AI Foundry Agent Service with vision capabilities.
  * For classes with more than 10 students, automatic batching with overlap is implemented.
  * 
  * Overlapping Strategy:
@@ -35,34 +38,20 @@ import { generateReadSasUrl } from './blobStorage';
  *   - Batch 3: Students 15-24 (overlap: 15, 16, 17)
  *   - Batch 4: Student 22-25 (overlap: 22, 23, 24)
  */
-const GPT_CONFIG = {
+const AGENT_CONFIG = {
   maxTokens: 2000,
-  // temperature not set - uses default (1) for model compatibility with reasoning models
   timeoutMs: 60000, // 60 seconds
-  maxRetries: 3, // Increased for rate limit handling
-  maxImagesPerRequest: 10, // GPT-5.2-chat limit
-  batchSize: 10, // Process 10 images per batch
-  overlapSize: 3 // Number of students to overlap between batches
+  maxRetries: 3,
+  maxImagesPerRequest: 10, // Vision model limit
+  batchSize: 10,
+  overlapSize: 3
 };
 
 /**
- * System prompt for GPT position estimation
+ * System prompt is now stored in the agent configuration
+ * This is kept here for reference only
  */
-const SYSTEM_PROMPT = `You are an AI assistant that analyzes classroom photos to estimate student seating positions. You will receive photos taken by students during an online class session. Each photo shows the student's view of the classroom, potentially including the projector screen or whiteboard in the background.
-
-Your task is to estimate the relative seating position of each student based on:
-1. Projector screen visibility and angle
-2. Projector screen size in the frame
-3. Classroom features visible in the background
-4. Relative positions compared to other students' photos
-
-IMPORTANT: When analyzing batches of students:
-- If this is part of a larger class, students in later batches typically sit BEHIND earlier batches
-- Row numbers represent distance from the projector (row 1 = front, higher rows = back)
-- Column numbers represent left-right position from teacher's perspective (column 1 = leftmost)
-- Analyze the students in this batch relative to each other, but be aware they may be part of a larger seating arrangement
-
-Provide estimates as row and column numbers, with row 1 being closest to the projector and column 1 being leftmost from the teacher's perspective.`;
+const SYSTEM_PROMPT_REFERENCE = `Position estimation agent analyzes classroom photos to estimate student seating positions based on projector visibility, screen size, and classroom features.`;
 
 /**
  * Generate user prompt for GPT analysis
@@ -113,14 +102,14 @@ Consider:
 }
 
 /**
- * Parse GPT response to extract JSON
+ * Parse agent response to extract JSON
  */
-function parseGPTResponse(content: string): GPTAnalysisResponse {
-  // Check if GPT refused the request
+function parseAgentResponse(content: string): GPTAnalysisResponse {
+  // Check if agent refused the request
   if (content.toLowerCase().includes("i'm unable") || 
       content.toLowerCase().includes("i cannot") ||
       content.toLowerCase().includes("i can't")) {
-    throw new Error(`GPT refused the request: ${content.substring(0, 200)}`);
+    throw new Error(`Agent refused the request: ${content.substring(0, 200)}`);
   }
   
   // Try to extract JSON from code blocks first
@@ -134,156 +123,89 @@ function parseGPTResponse(content: string): GPTAnalysisResponse {
   } catch (error) {
     // Provide more context in the error
     const preview = content.substring(0, 200);
-    throw new Error(`Failed to parse GPT response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}. Response preview: ${preview}`);
+    throw new Error(`Failed to parse agent response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}. Response preview: ${preview}`);
   }
 }
 
 /**
- * Call Azure OpenAI vision-capable chat completions API with retry logic
+ * Call Azure AI Foundry Agent Service for position estimation
+ * Uses managed identity authentication (no API keys)
  */
-async function callGPTAPI(
-  messages: any[],
+async function callPositionEstimationAgent(
+  userPrompt: string,
+  imageUrls: Array<{ studentId: string; url: string }>,
   context: InvocationContext
-): Promise<any> {
-  const openaiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const openaiKey = process.env.AZURE_OPENAI_KEY;
-  const deployment = process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat';
+): Promise<string> {
+  const agentClient = getAgentClient();
+  const positionAgentId = process.env.AZURE_AI_POSITION_AGENT_ID;
   
-  if (!openaiEndpoint || !openaiKey) {
-    throw new Error('Azure OpenAI configuration is missing (AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_KEY)');
+  if (!positionAgentId) {
+    throw new Error('AZURE_AI_POSITION_AGENT_ID environment variable is required. Run create-position-estimation-agent.sh to create the agent.');
   }
 
-  context.log(`Using deployment: ${deployment}`);
-  const apiUrl = `${openaiEndpoint}/openai/deployments/${deployment}/chat/completions?api-version=2024-10-21`;
+  context.log(`Using position estimation agent: ${positionAgentId}`);
+  context.log(`Analyzing ${imageUrls.length} images`);
   
-  // Define JSON Schema for structured output
-  const responseSchema = {
-    type: 'object',
-    properties: {
-      positions: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            studentId: {
-              type: 'string',
-              description: 'The student email/ID'
-            },
-            estimatedRow: {
-              type: 'integer',
-              description: 'Row number (1 = closest to projector)'
-            },
-            estimatedColumn: {
-              type: 'integer',
-              description: 'Column number (1 = leftmost from teacher perspective)'
-            },
-            confidence: {
-              type: 'string',
-              enum: ['HIGH', 'MEDIUM', 'LOW'],
-              description: 'Confidence level of the position estimate'
-            },
-            reasoning: {
-              type: 'string',
-              description: 'Brief explanation of the position estimate'
-            }
-          },
-          required: ['studentId', 'estimatedRow', 'estimatedColumn', 'confidence', 'reasoning'],
-          additionalProperties: false
-        }
-      },
-      analysisNotes: {
-        type: 'string',
-        description: 'Overall observations about the classroom layout'
+  // Create thread
+  const threadId = await agentClient.createThread();
+  context.log(`Created thread: ${threadId}`);
+  
+  try {
+    // Build message content with text and images
+    const messageContent: any[] = [
+      {
+        type: 'text',
+        text: userPrompt
       }
-    },
-    required: ['positions', 'analysisNotes'],
-    additionalProperties: false
-  };
-  
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt <= GPT_CONFIG.maxRetries; attempt++) {
-    try {
-      context.log(`Calling GPT API (attempt ${attempt + 1}/${GPT_CONFIG.maxRetries + 1})`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), GPT_CONFIG.timeoutMs);
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': openaiKey,
-        },
-        body: JSON.stringify({
-          messages,
-          max_completion_tokens: GPT_CONFIG.maxTokens,
-          // temperature not set - uses default (1) for model compatibility
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'seating_position_analysis',
-              description: 'Analysis of student seating positions based on classroom photos',
-              schema: responseSchema,
-              strict: true
-            }
-          }
-        }),
-        signal: controller.signal
+    ];
+    
+    // Add all images
+    for (const img of imageUrls) {
+      messageContent.push({
+        type: 'image_url',
+        image_url: { url: img.url }
       });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        
-        // Handle rate limit errors - retry with backoff
-        if (response.status === 429) {
-          let retryAfter = 20;
-          try {
-            const errorData = JSON.parse(errorText);
-            const match = errorData.error?.message?.match(/retry after (\d+) seconds/i);
-            if (match) {
-              retryAfter = parseInt(match[1]);
-            }
-          } catch (e) {
-            // Use default retry time
-          }
-          
-          context.log(`Rate limit hit, will retry after ${retryAfter} seconds (attempt ${attempt + 1}/${GPT_CONFIG.maxRetries + 1})`);
-          
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-          continue; // Retry
-        }
-        
-        throw new Error(`GPT API error: ${response.status} - ${errorText}`);
-      }
-      
-      const result = await response.json();
-      context.log('GPT API call successful with structured output');
-      return result;
-      
-    } catch (error: any) {
-      lastError = error;
-      
-      if (error.name === 'AbortError') {
-        context.warn(`GPT API timeout after ${GPT_CONFIG.timeoutMs}ms (attempt ${attempt + 1})`);
-      } else {
-        context.warn(`GPT API error (attempt ${attempt + 1}): ${error.message}`);
-      }
-      
-      // If this is the last attempt, throw the error
-      if (attempt === GPT_CONFIG.maxRetries) {
-        throw lastError;
-      }
-      
-      // Wait 5 seconds before retry
-      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+    
+    // Add message to thread using internal API
+    const url = `${agentClient['projectEndpoint']}/threads/${threadId}/messages?api-version=2025-05-01`;
+    const headers = await agentClient['getHeaders']();
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        role: 'user',
+        content: messageContent
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to add message with images: ${response.status} - ${errorText}`);
+    }
+    
+    context.log('Added message with images to thread');
+    
+    // Run agent
+    const runId = await agentClient.runAgent(threadId, positionAgentId);
+    context.log(`Started agent run: ${runId}`);
+    
+    // Wait for completion
+    const result = await agentClient.waitForRunCompletion(threadId, runId, 120); // 2 minute timeout for vision
+    context.log('Agent run completed');
+    
+    return result;
+    
+  } finally {
+    // Cleanup thread
+    try {
+      await agentClient.deleteThread(threadId);
+      context.log('Cleaned up thread');
+    } catch (e) {
+      context.warn('Failed to cleanup thread:', e);
     }
   }
-  
-  throw lastError || new Error('GPT API call failed after all retries');
 }
 
 /**
@@ -328,10 +250,10 @@ export async function estimateSeatingPositions(
     // Step 2: Check if batching is needed (more than 10 images)
     // ========================================================================
     
-    const needsBatching = imageUrls.length > GPT_CONFIG.maxImagesPerRequest;
+    const needsBatching = imageUrls.length > AGENT_CONFIG.maxImagesPerRequest;
     
     if (needsBatching) {
-      context.log(`Image count (${imageUrls.length}) exceeds limit of ${GPT_CONFIG.maxImagesPerRequest}. Using batching strategy.`);
+      context.log(`Image count (${imageUrls.length}) exceeds limit of ${AGENT_CONFIG.maxImagesPerRequest}. Using batching strategy.`);
       return await processBatchedAnalysis(imageUrls, context);
     }
     
@@ -357,43 +279,16 @@ async function processSingleBatch(
 ): Promise<PositionEstimationOutput> {
   const userPrompt = generateUserPrompt(imageUrls.length, imageUrls);
   
-  const messages = [
-    {
-      role: 'system',
-      content: SYSTEM_PROMPT
-    },
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'text',
-          text: userPrompt
-        },
-        ...imageUrls.map(img => ({
-          type: 'image_url',
-          image_url: { url: img.url }
-        }))
-      ]
-    }
-  ];
+  context.log('Calling position estimation agent with images');
   
-  context.log('Constructed GPT messages with system prompt and user images');
+  const content = await callPositionEstimationAgent(userPrompt, imageUrls, context);
   
-  const result = await callGPTAPI(messages, context);
+  context.log('Agent returned response');
   
-  const content = result.choices?.[0]?.message?.content;
-  const tokensUsed = result.usage?.total_tokens || 0;
-  
-  if (!content) {
-    throw new Error('GPT API returned empty content');
-  }
-  
-  context.log(`GPT API returned response (${tokensUsed} tokens used)`);
-  
-  const analysis = parseGPTResponse(content);
+  const analysis = parseAgentResponse(content);
   
   if (!analysis.positions || !Array.isArray(analysis.positions)) {
-    throw new Error('GPT response missing positions array');
+    throw new Error('Agent response missing positions array');
   }
   
   context.log(`Successfully parsed ${analysis.positions.length} position estimates`);
@@ -412,21 +307,16 @@ async function processBatchedAnalysis(
   imageUrls: Array<{ studentId: string; url: string }>,
   context: InvocationContext
 ): Promise<PositionEstimationOutput> {
-  const batchSize = GPT_CONFIG.batchSize;
-  const overlapSize = GPT_CONFIG.overlapSize;
+  const batchSize = AGENT_CONFIG.batchSize;
+  const overlapSize = AGENT_CONFIG.overlapSize;
   const batches: Array<Array<{ studentId: string; url: string }>> = [];
   
   // Split into overlapping batches
-  // Batch 1: 0-9 (10 students)
-  // Batch 2: 7-16 (10 students, 3 overlap with batch 1)
-  // Batch 3: 14-23 (10 students, 3 overlap with batch 2)
   let startIndex = 0;
   while (startIndex < imageUrls.length) {
     const endIndex = Math.min(startIndex + batchSize, imageUrls.length);
     batches.push(imageUrls.slice(startIndex, endIndex));
     
-    // Move forward by (batchSize - overlapSize) to create overlap
-    // If this is the last batch (remaining < batchSize), we're done
     if (endIndex === imageUrls.length) {
       break;
     }
@@ -453,38 +343,11 @@ async function processBatchedAnalysis(
       total: batches.length
     });
     
-    const messages = [
-      {
-        role: 'system',
-        content: SYSTEM_PROMPT
-      },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: userPrompt
-          },
-          ...batch.map(img => ({
-            type: 'image_url',
-            image_url: { url: img.url }
-          }))
-        ]
-      }
-    ];
+    const content = await callPositionEstimationAgent(userPrompt, batch, context);
     
-    const result = await callGPTAPI(messages, context);
+    context.log(`Batch ${batchNum} completed`);
     
-    const content = result.choices?.[0]?.message?.content;
-    const tokensUsed = result.usage?.total_tokens || 0;
-    
-    if (!content) {
-      throw new Error(`GPT API returned empty content for batch ${batchNum}`);
-    }
-    
-    context.log(`Batch ${batchNum} completed (${tokensUsed} tokens used)`);
-    
-    const analysis = parseGPTResponse(content);
+    const analysis = parseAgentResponse(content);
     
     if (!analysis.positions || !Array.isArray(analysis.positions)) {
       throw new Error(`Batch ${batchNum} response missing positions array`);

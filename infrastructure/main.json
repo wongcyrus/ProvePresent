@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.40.2.10011",
-      "templateHash": "14940729901145880627"
+      "version": "0.41.2.15936",
+      "templateHash": "12050142612067736143"
     }
   },
   "parameters": {
@@ -109,6 +109,13 @@
         "description": "Deploy GPT-4 Vision model (required for Live Quiz feature)"
       }
     },
+    "deployGpt4Model": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Deploy GPT-4 base model"
+      }
+    },
     "gpt52ChatDeploymentName": {
       "type": "string",
       "defaultValue": "gpt-5.2-chat",
@@ -137,6 +144,27 @@
         "description": "Deploy GPT-5.2-chat model (preview - most advanced model)"
       }
     },
+    "gpt4Capacity": {
+      "type": "int",
+      "defaultValue": 10,
+      "metadata": {
+        "description": "GPT-4 deployment capacity (TPM in thousands)"
+      }
+    },
+    "gpt4VisionCapacity": {
+      "type": "int",
+      "defaultValue": 10,
+      "metadata": {
+        "description": "GPT-4 Vision deployment capacity (TPM in thousands)"
+      }
+    },
+    "gpt52ChatCapacity": {
+      "type": "int",
+      "defaultValue": 250,
+      "metadata": {
+        "description": "GPT-5.2-chat deployment capacity (TPM in thousands)"
+      }
+    },
     "tags": {
       "type": "object",
       "defaultValue": {
@@ -160,6 +188,20 @@
     "corsUrls": "[parameters('frontendUrls')]"
   },
   "resources": [
+    {
+      "condition": "[parameters('deployAzureOpenAI')]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, variables('functionAppName'), variables('openAIName'), 'AzureAIDeveloper')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '64702f94-c441-49e6-a78b-ef80e0188fee')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-deployment'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'functions-deployment')]"
+      ]
+    },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -186,8 +228,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "15190532788140567227"
+              "version": "0.41.2.15936",
+              "templateHash": "2336165146092449498"
             }
           },
           "parameters": {
@@ -383,6 +425,32 @@
                 "deleteRetentionPolicy": {
                   "enabled": true,
                   "days": 7
+                },
+                "cors": {
+                  "corsRules": [
+                    {
+                      "allowedOrigins": [
+                        "https://*.azurestaticapps.net",
+                        "http://localhost:3000",
+                        "http://127.0.0.1:3000"
+                      ],
+                      "allowedMethods": [
+                        "GET",
+                        "PUT",
+                        "POST",
+                        "DELETE",
+                        "HEAD",
+                        "OPTIONS"
+                      ],
+                      "allowedHeaders": [
+                        "*"
+                      ],
+                      "exposedHeaders": [
+                        "*"
+                      ],
+                      "maxAgeInSeconds": 3600
+                    }
+                  ]
                 }
               },
               "dependsOn": [
@@ -484,8 +552,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "10863626874638242811"
+              "version": "0.41.2.15936",
+              "templateHash": "9114332933244603343"
             }
           },
           "parameters": {
@@ -628,8 +696,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "9712275839566390996"
+              "version": "0.41.2.15936",
+              "templateHash": "12762432427507852982"
             }
           },
           "parameters": {
@@ -772,6 +840,9 @@
           "deployVisionModel": {
             "value": "[parameters('deployVisionModel')]"
           },
+          "deployGpt4Model": {
+            "value": "[parameters('deployGpt4Model')]"
+          },
           "gpt52ChatDeploymentName": {
             "value": "[parameters('gpt52ChatDeploymentName')]"
           },
@@ -784,6 +855,15 @@
           "deployGpt52ChatModel": {
             "value": "[parameters('deployGpt52ChatModel')]"
           },
+          "gpt4Capacity": {
+            "value": "[parameters('gpt4Capacity')]"
+          },
+          "gpt4VisionCapacity": {
+            "value": "[parameters('gpt4VisionCapacity')]"
+          },
+          "gpt52ChatCapacity": {
+            "value": "[parameters('gpt52ChatCapacity')]"
+          },
           "tags": {
             "value": "[parameters('tags')]"
           }
@@ -794,8 +874,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "7056364443847025289"
+              "version": "0.41.2.15936",
+              "templateHash": "5177131487653939517"
             }
           },
           "parameters": {
@@ -860,6 +940,13 @@
                 "description": "Deploy GPT-4 Vision model (required for Live Quiz feature)"
               }
             },
+            "deployGpt4Model": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Deploy GPT-4 base model"
+              }
+            },
             "gpt52ChatDeploymentName": {
               "type": "string",
               "defaultValue": "gpt-5.2-chat",
@@ -885,7 +972,35 @@
               "type": "bool",
               "defaultValue": true,
               "metadata": {
-                "description": "Deploy GPT-5.2-chat model (preview - most advanced model)"
+                "description": "Deploy GPT-5.2-chat model (preview - most advanced model, supported by agents)"
+              }
+            },
+            "gpt4Capacity": {
+              "type": "int",
+              "defaultValue": 10,
+              "metadata": {
+                "description": "GPT-4 deployment capacity (TPM in thousands)"
+              }
+            },
+            "gpt4VisionCapacity": {
+              "type": "int",
+              "defaultValue": 10,
+              "metadata": {
+                "description": "GPT-4 Vision deployment capacity (TPM in thousands)"
+              }
+            },
+            "gpt52ChatCapacity": {
+              "type": "int",
+              "defaultValue": 250,
+              "metadata": {
+                "description": "GPT-5.2-chat deployment capacity (TPM in thousands)"
+              }
+            },
+            "defaultAgentModel": {
+              "type": "string",
+              "defaultValue": "gpt-4o, 2024-11-20",
+              "metadata": {
+                "description": "Default model for agents (format: \"model, version\" e.g. \"gpt-4o, 2024-11-20\")"
               }
             },
             "tags": {
@@ -893,12 +1008,19 @@
               "metadata": {
                 "description": "Tags to apply to the resource"
               }
+            },
+            "agentInstructions": {
+              "type": "string",
+              "defaultValue": "You are a university professor creating quiz questions to test student attention and understanding.\n\nIMPORTANT FORMATTING RULES:\n- Keep questions SHORT and DIRECT (one sentence when possible)\n- Use simple, clear language\n- Avoid long, complex sentences\n- Break multi-part questions into separate questions\n- For options, keep them concise (5-10 words max)\n\nGenerate questions that:\n- Test comprehension, not just memorization\n- Are clear and concise\n- Match the specified difficulty level\n- Can be answered based on the slide content\n- Help identify if students are paying attention\n\nONLY create MULTIPLE CHOICE questions with 4 options and 1 correct answer.\n\nALWAYS respond with valid JSON in this exact format (no markdown, no code blocks):\n{\n  \"questions\": [\n    {\n      \"text\": \"Short, clear question?\",\n      \"type\": \"MULTIPLE_CHOICE\",\n      \"difficulty\": \"EASY\" or \"MEDIUM\" or \"HARD\",\n      \"options\": [\"Brief option A\", \"Brief option B\", \"Brief option C\", \"Brief option D\"],\n      \"correctAnswer\": \"Brief option A\",\n      \"explanation\": \"Why this is the correct answer\"\n    }\n  ]\n}",
+              "metadata": {
+                "description": "Instructions for the quiz question generator agent"
+              }
             }
           },
           "resources": [
             {
               "type": "Microsoft.CognitiveServices/accounts",
-              "apiVersion": "2024-10-01",
+              "apiVersion": "2025-06-01",
               "name": "[parameters('openAIName')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -912,6 +1034,8 @@
               "properties": {
                 "customSubDomainName": "[parameters('openAIName')]",
                 "publicNetworkAccess": "Enabled",
+                "allowProjectManagement": true,
+                "disableLocalAuth": false,
                 "networkAcls": {
                   "defaultAction": "Allow",
                   "ipRules": [],
@@ -920,12 +1044,26 @@
               }
             },
             {
+              "type": "Microsoft.CognitiveServices/accounts/projects",
+              "apiVersion": "2025-06-01",
+              "name": "[format('{0}/{1}', parameters('openAIName'), format('{0}-project', parameters('openAIName')))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "displayName": "QR Attendance Project",
+                "description": "Project for QR Chain Attendance application with Agent Service"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('deployGpt4Model')]",
               "type": "Microsoft.CognitiveServices/accounts/deployments",
-              "apiVersion": "2024-10-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt4DeploymentName'))]",
               "sku": {
                 "name": "Standard",
-                "capacity": 10
+                "capacity": "[parameters('gpt4Capacity')]"
               },
               "properties": {
                 "model": {
@@ -941,11 +1079,11 @@
             {
               "condition": "[parameters('deployVisionModel')]",
               "type": "Microsoft.CognitiveServices/accounts/deployments",
-              "apiVersion": "2024-10-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt4VisionDeploymentName'))]",
               "sku": {
                 "name": "Standard",
-                "capacity": 10
+                "capacity": "[parameters('gpt4VisionCapacity')]"
               },
               "properties": {
                 "model": {
@@ -962,11 +1100,11 @@
             {
               "condition": "[parameters('deployGpt52ChatModel')]",
               "type": "Microsoft.CognitiveServices/accounts/deployments",
-              "apiVersion": "2024-10-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt52ChatDeploymentName'))]",
               "sku": {
-                "name": "Standard",
-                "capacity": 5
+                "name": "GlobalStandard",
+                "capacity": "[parameters('gpt52ChatCapacity')]"
               },
               "properties": {
                 "model": {
@@ -976,6 +1114,7 @@
                 }
               },
               "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('openAIName'), parameters('gpt4DeploymentName'))]",
                 "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('openAIName'), parameters('gpt4VisionDeploymentName'))]",
                 "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName'))]"
               ]
@@ -1001,21 +1140,21 @@
               "metadata": {
                 "description": "Azure OpenAI endpoint"
               },
-              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2024-10-01').endpoint]"
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2025-06-01').endpoint]"
             },
             "primaryKey": {
               "type": "string",
               "metadata": {
                 "description": "Azure OpenAI primary key"
               },
-              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2024-10-01').key1]"
+              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2025-06-01').key1]"
             },
             "gpt4DeploymentName": {
               "type": "string",
               "metadata": {
                 "description": "GPT-4 deployment name"
               },
-              "value": "[parameters('gpt4DeploymentName')]"
+              "value": "[if(parameters('deployGpt4Model'), parameters('gpt4DeploymentName'), '')]"
             },
             "gpt4VisionDeploymentName": {
               "type": "string",
@@ -1030,6 +1169,41 @@
                 "description": "GPT-5.2-chat deployment name (if deployed)"
               },
               "value": "[if(parameters('deployGpt52ChatModel'), parameters('gpt52ChatDeploymentName'), '')]"
+            },
+            "agentInstructions": {
+              "type": "string",
+              "metadata": {
+                "description": "Agent instructions for quiz question generator"
+              },
+              "value": "[parameters('agentInstructions')]"
+            },
+            "defaultAgentModel": {
+              "type": "string",
+              "metadata": {
+                "description": "Default agent model (use this when creating agents)"
+              },
+              "value": "[parameters('defaultAgentModel')]"
+            },
+            "projectName": {
+              "type": "string",
+              "metadata": {
+                "description": "Foundry project name"
+              },
+              "value": "[format('{0}-project', parameters('openAIName'))]"
+            },
+            "projectId": {
+              "type": "string",
+              "metadata": {
+                "description": "Foundry project ID"
+              },
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('openAIName'), format('{0}-project', parameters('openAIName')))]"
+            },
+            "projectEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Foundry project endpoint for agents"
+              },
+              "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', parameters('openAIName'), format('{0}-project', parameters('openAIName')))]"
             }
           }
         }
@@ -1069,7 +1243,7 @@
           "azureOpenAIEndpoint": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.endpoint.value), createObject('value', ''))]",
           "azureOpenAIKey": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.primaryKey.value), createObject('value', ''))]",
           "azureOpenAIDeployment": "[if(parameters('deployAzureOpenAI'), if(parameters('deployGpt52ChatModel'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt52ChatDeploymentName.value), createObject('value', 'gpt-4o')), createObject('value', ''))]",
-          "azureOpenAIVisionDeployment": "[if(parameters('deployAzureOpenAI'), createObject('value', 'gpt-4o'), createObject('value', ''))]",
+          "azureOpenAIVisionDeployment": "[if(parameters('deployAzureOpenAI'), createObject('value', 'gpt-5.2-chat'), createObject('value', ''))]",
           "frontendUrls": {
             "value": "[variables('corsUrls')]"
           },
@@ -1083,8 +1257,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "2179889876714695520"
+              "version": "0.41.2.15936",
+              "templateHash": "2034238854252791226"
             }
           },
           "parameters": {
@@ -1422,8 +1596,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.40.2.10011",
-              "templateHash": "17857546025606830611"
+              "version": "0.41.2.15936",
+              "templateHash": "16724010523005562015"
             }
           },
           "parameters": {

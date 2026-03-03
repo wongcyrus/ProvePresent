@@ -15,7 +15,15 @@
     "test": "npm run test --workspaces && cd backend && npm test",
     "test:unit": "npm run test:unit --workspaces && cd backend && npm run test:unit",
     "test:property": "npm run test:property --workspaces && cd backend && npm run test:property",
-    "lint": "npm run lint --workspaces && cd backend && npm run lint"
+    "lint": "npm run lint --workspaces && cd backend && npm run lint",
+    "create-agents": "tsx create-agents.ts"
+  },
+  "devDependencies": {
+    "@azure/ai-projects": "^2.0.0-beta.5",
+    "@azure/identity": "^4.5.0",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   },
   "overrides": {
     "react": "^18.3.1",

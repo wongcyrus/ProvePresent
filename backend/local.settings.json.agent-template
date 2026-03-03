@@ -1,0 +1,24 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    
+    "COMMENT_1": "=== Azure AI Foundry Agent Configuration ===",
+    "AZURE_AI_PROJECT_ENDPOINT": "https://<your-foundry-resource>.services.ai.azure.com/api/projects/<project-name>",
+    
+    "COMMENT_2": "=== Azure OpenAI Configuration ===",
+    "AZURE_OPENAI_ENDPOINT": "https://<your-openai-resource>.openai.azure.com",
+    "AZURE_OPENAI_KEY": "<your-api-key>",
+    "AZURE_OPENAI_DEPLOYMENT": "gpt-5.2-chat",
+    
+    "COMMENT_3": "=== How to get AZURE_AI_PROJECT_ENDPOINT ===",
+    "COMMENT_4": "After deploying the updated Bicep template, run:",
+    "COMMENT_5": "az deployment group show --resource-group <rg> --name <deployment> --query properties.outputs.projectEndpoint.value",
+    
+    "COMMENT_6": "=== Other existing settings ===",
+    "AZURE_STORAGE_CONNECTION_STRING": "...",
+    "TABLE_STORAGE_CONNECTION_STRING": "...",
+    "SIGNALR_CONNECTION_STRING": "..."
+  }
+}

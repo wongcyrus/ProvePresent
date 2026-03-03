@@ -1,11 +1,12 @@
 /**
  * Generate Questions API Endpoint
- * Uses Azure OpenAI to generate quiz questions from slide analysis
+ * Uses Azure AI Foundry Agent to generate quiz questions from slide analysis
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseUserPrincipal, hasRole } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
+import { getAgentClient } from '../utils/agentService';
 import { randomUUID } from 'crypto';
 
 export async function generateQuestions(
@@ -45,15 +46,7 @@ export async function generateQuestions(
       };
     }
 
-    // Call Azure OpenAI to generate questions
-    const openaiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const openaiKey = process.env.AZURE_OPENAI_KEY;
-    const openaiDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat';
-
-    if (!openaiEndpoint || !openaiKey) {
-      throw new Error('Azure OpenAI not configured');
-    }
-
+    // Prepare slide content for the agent
     const slideContent = `
 Topic: ${analysis.topic}
 Title: ${analysis.title || 'N/A'}
@@ -65,33 +58,11 @@ Summary: ${analysis.summary || 'N/A'}
 
     const difficultyFilter = difficulty || analysis.difficulty || 'MEDIUM';
 
-    const apiUrl = `${openaiEndpoint}/openai/deployments/${openaiDeployment}/chat/completions?api-version=2024-10-21`;
+    // Use Azure AI Foundry Agent to generate questions
+    // Agent is pre-configured in infrastructure with instructions
+    const agentClient = getAgentClient();
 
-    const requestBody = {
-      messages: [
-        {
-          role: 'system',
-          content: `You are a university professor creating quiz questions to test student attention and understanding.
-
-IMPORTANT FORMATTING RULES:
-- Keep questions SHORT and DIRECT (one sentence when possible)
-- Use simple, clear language
-- Avoid long, complex sentences
-- Break multi-part questions into separate questions
-- For options, keep them concise (5-10 words max)
-
-Generate questions that:
-- Test comprehension, not just memorization
-- Are clear and concise
-- Match the specified difficulty level
-- Can be answered based on the slide content
-- Help identify if students are paying attention
-
-ONLY create MULTIPLE CHOICE questions with 4 options and 1 correct answer.`
-        },
-        {
-          role: 'user',
-          content: `Based on this slide content:
+    const userMessage = `Based on this slide content:
 ${slideContent}
 
 Generate ${count} MULTIPLE CHOICE quiz questions at ${difficultyFilter} difficulty level.
@@ -102,92 +73,47 @@ FORMATTING REQUIREMENTS:
 - Use simple vocabulary appropriate for the difficulty level
 - ONLY generate MULTIPLE_CHOICE questions (no SHORT_ANSWER)
 
-Return ONLY valid JSON in this exact format (no markdown, no code blocks):
-{
-  "questions": [
-    {
-      "text": "Short, clear question?",
-      "type": "MULTIPLE_CHOICE",
-      "difficulty": "EASY" or "MEDIUM" or "HARD",
-      "options": ["Brief option A", "Brief option B", "Brief option C", "Brief option D"],
-      "correctAnswer": "Brief option A",
-      "explanation": "Why this is the correct answer"
-    }
-  ]
-}`
-        }
-      ],
-      max_completion_tokens: 2000,
-      response_format: { type: "json_object" }
-      // temperature not set - uses default (1) for model compatibility
-    };
+Return ONLY valid JSON (no markdown, no code blocks).`;
 
-    // Retry logic with exponential backoff for rate limits
-    let response;
-    let lastError;
-    const maxRetries = 3;
+    context.log('Calling AI Agent to generate questions...');
     
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'api-key': openaiKey
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (response.ok) {
-          break; // Success, exit retry loop
-        }
-
-        const errorText = await response.text();
-        
-        // Handle rate limit errors with retry
-        if (response.status === 429) {
-          let retryAfter = 20;
-          try {
-            const errorData = JSON.parse(errorText);
-            const match = errorData.error?.message?.match(/retry after (\d+) seconds/i);
-            if (match) {
-              retryAfter = parseInt(match[1]);
-            }
-          } catch (e) {
-            // Use default retry time
-          }
-          
-          if (attempt < maxRetries - 1) {
-            context.log(`Rate limit hit, retrying after ${retryAfter} seconds (attempt ${attempt + 1}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-            continue;
-          }
-        }
-        
-        // Non-rate-limit error or final attempt
-        context.error('OpenAI API error:', errorText);
-        throw new Error(`OpenAI API error: ${response.status}`);
-        
-      } catch (error: any) {
-        lastError = error;
-        if (attempt === maxRetries - 1) {
-          throw error;
-        }
-      }
+    let agentResponse;
+    try {
+      agentResponse = await agentClient.runSingleInteraction({
+        userMessage: userMessage
+      });
+    } catch (error: any) {
+      context.error('Agent interaction failed:', error);
+      throw new Error(`Agent failed: ${error.message}`);
     }
 
-    if (!response || !response.ok) {
-      throw lastError || new Error('Failed to get response from OpenAI');
-    }
-
-    const aiResponse = await response.json();
-    const content = aiResponse.choices[0]?.message?.content;
+    const content = agentResponse.content;
 
     if (!content) {
-      throw new Error('No content in OpenAI response');
+      throw new Error('No content in agent response');
     }
 
-    const questionsData = JSON.parse(content);
+    // Parse the JSON response
+    let questionsData;
+    try {
+      // Remove markdown code blocks if present
+      let cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // If the agent echoed the prompt, try to extract just the JSON
+      // Look for the first { and last } to extract the JSON object
+      const firstBrace = cleanContent.indexOf('{');
+      const lastBrace = cleanContent.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        cleanContent = cleanContent.substring(firstBrace, lastBrace + 1);
+      }
+      
+      questionsData = JSON.parse(cleanContent);
+    } catch (parseError: any) {
+      context.error('Failed to parse agent response:', content);
+      throw new Error(`Invalid JSON from agent: ${parseError.message}`);
+    }
+
     const questions = questionsData.questions || [];
 
     // Store questions in database

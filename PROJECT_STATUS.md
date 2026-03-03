@@ -1,7 +1,41 @@
 # QR Chain Attendance System - Project Status
 
-**Last Updated**: February 27, 2026  
+**Last Updated**: March 3, 2026  
 **Status**: ✅ PRODUCTION READY - All Features Complete
+
+---
+
+## 🔧 Recent Fixes
+
+### Agent API Migration (March 3, 2026)
+**Migration**: Classic Agents API → New Agents API (TypeScript SDK)  
+**Status**: ✅ COMPLETE  
+**Changes**:
+- Created `create-agents.ts` using `@azure/ai-projects` SDK
+- Agents now show as "Agents" (not "Classic Agents") in Azure AI Foundry portal
+- Updated deployment script to use TypeScript instead of bash scripts
+- Added dependencies: `@azure/ai-projects`, `@azure/identity`, `tsx`, `typescript`
+- Backend code unchanged (compatible with both APIs)
+
+**Benefits**:
+- Future-proof (no deprecation concerns)
+- Better portal experience
+- TypeScript integration
+- SDK benefits (type safety, error handling)
+
+**Documentation**: See `AGENT_MIGRATION_COMPLETE.md`, `AGENT_API_STATUS.md`, `QUICK_START_AGENTS.md`
+
+### Agent Service Permissions (March 3, 2026)
+**Issue**: Function App receiving 401 errors when calling Azure AI Foundry Agent Service  
+**Root Cause**: Azure AI User role must be assigned at PROJECT scope, not account scope (per Microsoft docs)  
+**Fix Applied**: 
+- Updated `infrastructure/modules/rbac.bicep` to assign Azure AI User role at Foundry project scope
+- Updated `infrastructure/main.bicep` to pass project name to rbac module
+- Full deployment now automatically configures permissions at correct scope
+
+**Required Roles** (automatically assigned by infrastructure):
+1. Azure AI User at PROJECT scope - for Agent Service operations (threads, runs, messages)
+2. Cognitive Services OpenAI User at account scope - for model deployments and completions
 
 ---
 

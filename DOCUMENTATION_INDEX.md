@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated**: February 25, 2026  
+**Last Updated**: March 3, 2026  
 **Status**: ✅ Organized and Current
 
 ---
@@ -13,6 +13,10 @@
 - **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Current deployment status
 - **[SECURITY.md](SECURITY.md)** - Security guidelines
 - **[SCRIPTS_README.md](SCRIPTS_README.md)** - Script documentation
+- **[AGENT_SERVICE_GUIDE.md](AGENT_SERVICE_GUIDE.md)** - Azure AI Foundry Agent Service guide
+- **[AGENT_API_STATUS.md](AGENT_API_STATUS.md)** - Classic vs New Agents explanation
+- **[API_KEY_REMOVAL_SUMMARY.md](API_KEY_REMOVAL_SUMMARY.md)** - API key removal and migration plan
+- **[POSITION_ESTIMATION_MIGRATION.md](POSITION_ESTIMATION_MIGRATION.md)** - Position estimation agent migration
 
 ---
 
@@ -82,6 +86,11 @@
 
 **...work on the quiz feature**
 - Read [docs/architecture/LIVE_QUIZ.md](docs/architecture/LIVE_QUIZ.md)
+- See [AGENT_SERVICE_GUIDE.md](AGENT_SERVICE_GUIDE.md) for agent setup
+
+**...understand authentication and security**
+- Check [SECURITY.md](SECURITY.md)
+- Review [API_KEY_REMOVAL_SUMMARY.md](API_KEY_REMOVAL_SUMMARY.md) for managed identity migration
 
 **...contribute code**
 - Follow [docs/development/REFACTORING_GUIDE.md](docs/development/REFACTORING_GUIDE.md)
@@ -138,6 +147,18 @@
 
 ## 🔄 Recent Changes
 
+### March 3, 2026 (Latest)
+- ✅ Migrated position estimation to agent service (no API keys)
+- ✅ Created position estimation agent creation script
+- ✅ Updated deployment script to create both agents
+- ✅ Added POSITION_ESTIMATION_MIGRATION.md documentation
+
+### March 3, 2026 (Earlier)
+- ✅ Removed API key from `.agent-config.env`
+- ✅ Updated agent creation script to use managed identity only
+- ✅ Added API_KEY_REMOVAL_SUMMARY.md documenting migration plan
+- ✅ Updated AGENT_SERVICE_GUIDE.md with security status
+
 ### February 25, 2026
 - ✅ Organized documentation into subdirectories
 - ✅ Moved temporary files to archive
@@ -147,5 +168,5 @@
 
 ---
 
-**Last Updated**: February 25, 2026  
+**Last Updated**: March 3, 2026  
 **Maintained By**: Development Team

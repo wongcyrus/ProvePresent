@@ -43,7 +43,7 @@ param gpt52ChatModelName string = 'gpt-5.2-chat'
 @description('GPT-5.2-chat model version')
 param gpt52ChatModelVersion string = '2026-02-10'
 
-@description('Deploy GPT-5.2-chat model (preview - most advanced model)')
+@description('Deploy GPT-5.2-chat model (preview - most advanced model, supported by agents)')
 param deployGpt52ChatModel bool = true
 
 @description('GPT-4 deployment capacity (TPM in thousands)')
@@ -55,14 +55,17 @@ param gpt4VisionCapacity int = 10
 @description('GPT-5.2-chat deployment capacity (TPM in thousands)')
 param gpt52ChatCapacity int = 250
 
+@description('Default model for agents (format: "model, version" e.g. "gpt-4o, 2024-11-20")')
+param defaultAgentModel string = 'gpt-4o, 2024-11-20' // Recommended for eastus2, no registration required
+
 @description('Tags to apply to the resource')
 param tags object
 
 // ============================================================================
-// AZURE OPENAI ACCOUNT
+// AZURE AI FOUNDRY ACCOUNT (with Project Management)
 // ============================================================================
 
-resource openAI 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: openAIName
   location: location
   tags: tags
@@ -76,6 +79,8 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   properties: {
     customSubDomainName: openAIName
     publicNetworkAccess: 'Enabled'
+    allowProjectManagement: true  // Enable Foundry projects for Agent Service
+    disableLocalAuth: true  // Use keyless authentication (managed identity)
     networkAcls: {
       defaultAction: 'Allow'
       ipRules: []
@@ -85,10 +90,27 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
 }
 
 // ============================================================================
+// FOUNDRY PROJECT (for Agent Service)
+// ============================================================================
+
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+  parent: openAI
+  name: '${openAIName}-project'
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    displayName: 'QR Attendance Project'
+    description: 'Project for QR Chain Attendance application with Agent Service'
+  }
+}
+
+// ============================================================================
 // GPT-4 DEPLOYMENT (for question generation and answer evaluation)
 // ============================================================================
 
-resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = if (deployGpt4Model) {
+resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = if (deployGpt4Model) {
   parent: openAI
   name: gpt4DeploymentName
   sku: {
@@ -108,7 +130,7 @@ resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-1
 // GPT-4 VISION DEPLOYMENT (for slide analysis)
 // ============================================================================
 
-resource gpt4VisionDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = if (deployVisionModel) {
+resource gpt4VisionDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = if (deployVisionModel) {
   parent: openAI
   name: gpt4VisionDeploymentName
   sku: {
@@ -131,7 +153,7 @@ resource gpt4VisionDeployment 'Microsoft.CognitiveServices/accounts/deployments@
 // GPT-5.2-CHAT DEPLOYMENT (preview - most advanced model)
 // ============================================================================
 
-resource gpt52ChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = if (deployGpt52ChatModel) {
+resource gpt52ChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = if (deployGpt52ChatModel) {
   parent: openAI
   name: gpt52ChatDeploymentName
   sku: {
@@ -153,6 +175,59 @@ resource gpt52ChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
 }
 
 // ============================================================================
+// NOTE: Foundry Projects and Agent Creation
+// ============================================================================
+// The Foundry project is now created via Bicep above.
+// 
+// After deployment, create agents using the REST API:
+// 1. Run: ./create-persistent-agent.sh <resource-group> <openai-name>
+// 2. The script will create an agent in the Foundry project
+// 3. Agents will be visible in the Azure AI Foundry portal UI
+// 4. The agent will use the Foundry Agent Service API
+// ============================================================================
+
+// ============================================================================
+// PERSISTENT AGENT - Quiz Question Generator
+// ============================================================================
+
+@description('Instructions for the quiz question generator agent')
+param agentInstructions string = '''You are a university professor creating quiz questions to test student attention and understanding.
+
+IMPORTANT FORMATTING RULES:
+- Keep questions SHORT and DIRECT (one sentence when possible)
+- Use simple, clear language
+- Avoid long, complex sentences
+- Break multi-part questions into separate questions
+- For options, keep them concise (5-10 words max)
+
+Generate questions that:
+- Test comprehension, not just memorization
+- Are clear and concise
+- Match the specified difficulty level
+- Can be answered based on the slide content
+- Help identify if students are paying attention
+
+ONLY create MULTIPLE CHOICE questions with 4 options and 1 correct answer.
+
+ALWAYS respond with valid JSON in this exact format (no markdown, no code blocks):
+{
+  "questions": [
+    {
+      "text": "Short, clear question?",
+      "type": "MULTIPLE_CHOICE",
+      "difficulty": "EASY" or "MEDIUM" or "HARD",
+      "options": ["Brief option A", "Brief option B", "Brief option C", "Brief option D"],
+      "correctAnswer": "Brief option A",
+      "explanation": "Why this is the correct answer"
+    }
+  ]
+}'''
+
+// Note: Agent creation via Bicep is not yet supported in the API version
+// Agents must be created via REST API or SDK after infrastructure deployment
+// See the deployment script for agent creation
+
+// ============================================================================
 // OUTPUTS
 // ============================================================================
 
@@ -165,8 +240,8 @@ output openAIId string = openAI.id
 @description('Azure OpenAI endpoint')
 output endpoint string = openAI.properties.endpoint
 
-@description('Azure OpenAI primary key')
-output primaryKey string = openAI.listKeys().key1
+@description('Azure OpenAI primary key - Not available when disableLocalAuth is true')
+output primaryKey string = ''  // Keyless auth - use managed identity instead
 
 @description('GPT-4 deployment name')
 output gpt4DeploymentName string = deployGpt4Model ? gpt4Deployment.name : ''
@@ -176,3 +251,18 @@ output gpt4VisionDeploymentName string = deployVisionModel ? gpt4VisionDeploymen
 
 @description('GPT-5.2-chat deployment name (if deployed)')
 output gpt52ChatDeploymentName string = deployGpt52ChatModel ? gpt52ChatDeployment.name : ''
+
+@description('Agent instructions for quiz question generator')
+output agentInstructions string = agentInstructions
+
+@description('Default agent model (use this when creating agents)')
+output defaultAgentModel string = defaultAgentModel
+
+@description('Foundry project name')
+output projectName string = foundryProject.name
+
+@description('Foundry project ID')
+output projectId string = foundryProject.id
+
+@description('Foundry project endpoint for agents')
+output projectEndpoint string = 'https://${openAIName}.services.ai.azure.com/api/projects/${foundryProject.name}'

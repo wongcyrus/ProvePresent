@@ -213,3 +213,6 @@ output storageAccountKey string = storageAccount.listKeys().keys[0].value
 
 @description('Storage Account Blob endpoint')
 output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob
+
+@description('Storage Account connection string')
+output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
