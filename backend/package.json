@@ -10,6 +10,8 @@
     "test": "jest",
     "test:unit": "jest --testPathPattern=\\.test\\.ts$",
     "test:property": "jest --testPathPattern=\\.property\\.test\\.ts$",
+    "test:smtp": "npm run build && node dist/src/scripts/testOtpSmtp.js",
+    "test:smtp:send": "npm run build && node dist/src/scripts/testOtpSmtp.js --send",
     "lint": "eslint src --ext .ts",
     "prestart": "npm run build",
     "predeploy": "npm run build"
@@ -22,10 +24,12 @@
     "@azure/identity": "^4.13.0",
     "@azure/storage-blob": "^12.30.0",
     "@azure/web-pubsub": "^1.2.0",
-    "durable-functions": "^3.3.0"
+    "durable-functions": "^3.3.0",
+    "nodemailer": "^6.10.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",
+    "@types/nodemailer": "^6.4.17",
     "@types/node": "^20.10.6",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

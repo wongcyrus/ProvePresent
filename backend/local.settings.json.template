@@ -13,7 +13,16 @@
     "WIFI_SSID_ALLOWLIST": "",
     "AZURE_OPENAI_ENDPOINT": "",
     "AZURE_OPENAI_KEY": "",
-    "AZURE_OPENAI_DEPLOYMENT": "gpt-5.2-chat"
+    "AZURE_OPENAI_DEPLOYMENT": "gpt-5.2-chat",
+    "OTP_SMTP_HOST": "smtp.gmail.com",
+    "OTP_SMTP_PORT": "465",
+    "OTP_SMTP_SECURE": "true",
+    "OTP_SMTP_USERNAME": "",
+    "OTP_SMTP_PASSWORD": "",
+    "OTP_FROM_EMAIL": "",
+    "OTP_FROM_NAME": "QR Chain Attend",
+    "OTP_EMAIL_SUBJECT": "Your verification code",
+    "OTP_APP_NAME": "QR Chain Attend"
   },
   "Host": {
     "CORS": "*",

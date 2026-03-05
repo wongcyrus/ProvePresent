@@ -33,6 +33,10 @@ fi
 echo -e "${GREEN}✓ Found Function App: $FUNCTION_APP_NAME${NC}"
 echo ""
 
+echo -e "${YELLOW}ℹ OTP SMTP settings are managed by Bicep during infrastructure deployment.${NC}"
+echo "  Run ./deploy-full-development.sh after updating .otp-email-credentials."
+echo ""
+
 # Get connection strings
 echo -e "${BLUE}Step 2: Getting connection strings...${NC}"
 

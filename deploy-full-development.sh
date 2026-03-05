@@ -17,6 +17,66 @@ RESOURCE_GROUP="rg-qr-attendance-dev"
 LOCATION="eastus2"
 DEPLOYMENT_NAME="qr-attendance-dev-deployment"
 DESIRED_SWA_SKU="Standard"
+OTP_CREDENTIALS_FILE=".otp-email-credentials"
+
+load_key_value_file() {
+    local file_path="$1"
+    local raw_line
+    local line
+    local key
+    local value
+
+    while IFS= read -r raw_line || [ -n "$raw_line" ]; do
+        line="${raw_line%$'\r'}"
+
+        # Skip empty lines and comments
+        case "$line" in
+            ''|'#'*)
+                continue
+                ;;
+        esac
+
+        # Skip malformed lines that don't contain '='
+        if [[ "$line" != *"="* ]]; then
+            continue
+        fi
+
+        key="${line%%=*}"
+        value="${line#*=}"
+
+        # Trim surrounding whitespace from key only
+        key="${key#${key%%[![:space:]]*}}"
+        key="${key%${key##*[![:space:]]}}"
+
+        [ -z "$key" ] && continue
+        export "$key=$value"
+    done < "$file_path"
+}
+
+load_otp_email_credentials() {
+    if [ -f "$OTP_CREDENTIALS_FILE" ]; then
+        echo "Loading OTP email credentials from $OTP_CREDENTIALS_FILE..."
+        load_key_value_file "$OTP_CREDENTIALS_FILE"
+    fi
+
+    OTP_SMTP_HOST="${OTP_SMTP_HOST:-smtp.gmail.com}"
+    OTP_SMTP_PORT="${OTP_SMTP_PORT:-465}"
+    OTP_SMTP_SECURE="${OTP_SMTP_SECURE:-true}"
+    OTP_FROM_NAME="${OTP_FROM_NAME:-VTC Attendance}"
+    OTP_EMAIL_SUBJECT="${OTP_EMAIL_SUBJECT:-Your verification code}"
+    OTP_APP_NAME="${OTP_APP_NAME:-QR Chain Attend}"
+    OTP_FROM_EMAIL="${OTP_FROM_EMAIL:-${OTP_SMTP_USERNAME:-}}"
+
+    export OTP_SMTP_HOST OTP_SMTP_PORT OTP_SMTP_SECURE OTP_SMTP_USERNAME OTP_SMTP_PASSWORD
+    export OTP_FROM_EMAIL OTP_FROM_NAME OTP_EMAIL_SUBJECT OTP_APP_NAME
+
+    if [ -n "${OTP_SMTP_USERNAME:-}" ] && [ -n "${OTP_SMTP_PASSWORD:-}" ]; then
+        echo -e "${GREEN}✓ OTP email settings detected (Bicep will apply them)${NC}"
+    else
+        echo -e "${YELLOW}⚠ OTP email credentials not found. Bicep will deploy OTP settings as empty/default.${NC}"
+        echo "  To configure, create .otp-email-credentials (see .otp-email-credentials.example)."
+    fi
+}
 
 discover_project_name() {
     local resource_group="$1"
@@ -477,6 +537,10 @@ fi
 
 echo -e "${GREEN}✓ External ID authentication configured${NC}"
 echo "  Tenant ID: $TENANT_ID"
+echo ""
+
+# Load optional OTP email credentials from local (gitignored) file or environment variables
+load_otp_email_credentials
 echo ""
 
 # Step 1: Check prerequisites

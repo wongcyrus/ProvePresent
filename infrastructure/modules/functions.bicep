@@ -37,11 +37,42 @@ param azureOpenAIDeployment string = ''
 @description('Azure OpenAI vision deployment name')
 param azureOpenAIVisionDeployment string = 'gpt-4.1'
 
+@description('OTP SMTP host for custom email OTP delivery')
+param otpSmtpHost string = 'smtp.gmail.com'
+
+@description('OTP SMTP port for custom email OTP delivery')
+param otpSmtpPort string = '465'
+
+@description('OTP SMTP secure flag for custom email OTP delivery')
+param otpSmtpSecure string = 'true'
+
+@description('OTP SMTP username for custom email OTP delivery')
+@secure()
+param otpSmtpUsername string = ''
+
+@description('OTP SMTP password for custom email OTP delivery')
+@secure()
+param otpSmtpPassword string = ''
+
+@description('OTP from email address (defaults to SMTP username when empty)')
+param otpFromEmail string = ''
+
+@description('OTP from display name')
+param otpFromName string = 'VTC Attendance'
+
+@description('OTP email subject')
+param otpEmailSubject string = 'Your verification code'
+
+@description('OTP app name used in email body')
+param otpAppName string = 'QR Chain Attend'
+
 @description('Frontend URLs for CORS configuration (fallback only - Static Web App uses linked backend)')
 param frontendUrls array = []
 
 @description('Tags to apply to the resource')
 param tags object
+
+var otpFromEmailResolved = empty(otpFromEmail) ? otpSmtpUsername : otpFromEmail
 
 // ============================================================================
 // APP SERVICE PLAN (Consumption)
@@ -200,6 +231,42 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'QR_ENCRYPTION_KEY'
           value: uniqueString(resourceGroup().id, functionAppName, 'qr-encryption')
+        }
+        {
+          name: 'OTP_SMTP_HOST'
+          value: otpSmtpHost
+        }
+        {
+          name: 'OTP_SMTP_PORT'
+          value: otpSmtpPort
+        }
+        {
+          name: 'OTP_SMTP_SECURE'
+          value: otpSmtpSecure
+        }
+        {
+          name: 'OTP_SMTP_USERNAME'
+          value: otpSmtpUsername
+        }
+        {
+          name: 'OTP_SMTP_PASSWORD'
+          value: otpSmtpPassword
+        }
+        {
+          name: 'OTP_FROM_EMAIL'
+          value: otpFromEmailResolved
+        }
+        {
+          name: 'OTP_FROM_NAME'
+          value: otpFromName
+        }
+        {
+          name: 'OTP_EMAIL_SUBJECT'
+          value: otpEmailSubject
+        }
+        {
+          name: 'OTP_APP_NAME'
+          value: otpAppName
         }
       ]
       cors: {

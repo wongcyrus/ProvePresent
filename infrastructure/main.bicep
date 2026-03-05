@@ -82,6 +82,35 @@ param gpt4VisionCapacity int = 10
 @description('GPT-5.2-chat deployment capacity (TPM in thousands)')
 param gpt52ChatCapacity int = 250
 
+@description('OTP SMTP host for custom email OTP delivery')
+param otpSmtpHost string = 'smtp.gmail.com'
+
+@description('OTP SMTP port for custom email OTP delivery')
+param otpSmtpPort string = '465'
+
+@description('OTP SMTP secure flag for custom email OTP delivery')
+param otpSmtpSecure string = 'true'
+
+@description('OTP SMTP username for custom email OTP delivery')
+@secure()
+param otpSmtpUsername string = ''
+
+@description('OTP SMTP password (app password) for custom email OTP delivery')
+@secure()
+param otpSmtpPassword string = ''
+
+@description('OTP from email address (defaults to SMTP username when empty)')
+param otpFromEmail string = ''
+
+@description('OTP from display name')
+param otpFromName string = 'VTC Attendance'
+
+@description('OTP email subject')
+param otpEmailSubject string = 'Your verification code'
+
+@description('OTP app name used in email body')
+param otpAppName string = 'QR Chain Attend'
+
 @description('Tags to apply to all resources')
 param tags object = {
   Environment: environment
@@ -180,6 +209,15 @@ module functions 'modules/functions.bicep' = {
     azureOpenAIKey: deployAzureOpenAI ? openai.outputs.primaryKey : ''
     azureOpenAIDeployment: deployAzureOpenAI ? (deployGpt4Model ? openai.outputs.gpt4DeploymentName : (deployGpt52ChatModel ? openai.outputs.gpt52ChatDeploymentName : '')) : ''
     azureOpenAIVisionDeployment: deployAzureOpenAI ? (deployVisionModel ? openai.outputs.gpt4VisionDeploymentName : (deployGpt4Model ? openai.outputs.gpt4DeploymentName : 'gpt-4.1')) : ''
+    otpSmtpHost: otpSmtpHost
+    otpSmtpPort: otpSmtpPort
+    otpSmtpSecure: otpSmtpSecure
+    otpSmtpUsername: otpSmtpUsername
+    otpSmtpPassword: otpSmtpPassword
+    otpFromEmail: otpFromEmail
+    otpFromName: otpFromName
+    otpEmailSubject: otpEmailSubject
+    otpAppName: otpAppName
     frontendUrls: corsUrls
     tags: tags
   }

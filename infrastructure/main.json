@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "12050142612067736143"
+      "templateHash": "9755430292746050850"
     }
   },
   "parameters": {
@@ -165,6 +165,69 @@
         "description": "GPT-5.2-chat deployment capacity (TPM in thousands)"
       }
     },
+    "otpSmtpHost": {
+      "type": "string",
+      "defaultValue": "smtp.gmail.com",
+      "metadata": {
+        "description": "OTP SMTP host for custom email OTP delivery"
+      }
+    },
+    "otpSmtpPort": {
+      "type": "string",
+      "defaultValue": "465",
+      "metadata": {
+        "description": "OTP SMTP port for custom email OTP delivery"
+      }
+    },
+    "otpSmtpSecure": {
+      "type": "string",
+      "defaultValue": "true",
+      "metadata": {
+        "description": "OTP SMTP secure flag for custom email OTP delivery"
+      }
+    },
+    "otpSmtpUsername": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "OTP SMTP username for custom email OTP delivery"
+      }
+    },
+    "otpSmtpPassword": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "OTP SMTP password (app password) for custom email OTP delivery"
+      }
+    },
+    "otpFromEmail": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "OTP from email address (defaults to SMTP username when empty)"
+      }
+    },
+    "otpFromName": {
+      "type": "string",
+      "defaultValue": "VTC Attendance",
+      "metadata": {
+        "description": "OTP from display name"
+      }
+    },
+    "otpEmailSubject": {
+      "type": "string",
+      "defaultValue": "Your verification code",
+      "metadata": {
+        "description": "OTP email subject"
+      }
+    },
+    "otpAppName": {
+      "type": "string",
+      "defaultValue": "QR Chain Attend",
+      "metadata": {
+        "description": "OTP app name used in email body"
+      }
+    },
     "tags": {
       "type": "object",
       "defaultValue": {
@@ -188,20 +251,6 @@
     "corsUrls": "[parameters('frontendUrls')]"
   },
   "resources": [
-    {
-      "condition": "[parameters('deployAzureOpenAI')]",
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(resourceGroup().id, variables('functionAppName'), variables('openAIName'), 'AzureAIDeveloper')]",
-      "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '64702f94-c441-49e6-a78b-ef80e0188fee')]",
-        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-deployment'), '2025-04-01').outputs.principalId.value]",
-        "principalType": "ServicePrincipal"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'functions-deployment')]"
-      ]
-    },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -229,7 +278,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "2336165146092449498"
+              "templateHash": "9926692935660109359"
             }
           },
           "parameters": {
@@ -515,6 +564,13 @@
                 "description": "Storage Account Blob endpoint"
               },
               "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.blob]"
+            },
+            "connectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account connection string"
+              },
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
             }
           }
         }
@@ -875,7 +931,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "5177131487653939517"
+              "templateHash": "3298852423859044485"
             }
           },
           "parameters": {
@@ -1020,7 +1076,7 @@
           "resources": [
             {
               "type": "Microsoft.CognitiveServices/accounts",
-              "apiVersion": "2025-06-01",
+              "apiVersion": "2025-04-01-preview",
               "name": "[parameters('openAIName')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -1035,7 +1091,7 @@
                 "customSubDomainName": "[parameters('openAIName')]",
                 "publicNetworkAccess": "Enabled",
                 "allowProjectManagement": true,
-                "disableLocalAuth": false,
+                "disableLocalAuth": true,
                 "networkAcls": {
                   "defaultAction": "Allow",
                   "ipRules": [],
@@ -1045,9 +1101,12 @@
             },
             {
               "type": "Microsoft.CognitiveServices/accounts/projects",
-              "apiVersion": "2025-06-01",
+              "apiVersion": "2025-04-01-preview",
               "name": "[format('{0}/{1}', parameters('openAIName'), format('{0}-project', parameters('openAIName')))]",
               "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
               "properties": {
                 "displayName": "QR Attendance Project",
                 "description": "Project for QR Chain Attendance application with Agent Service"
@@ -1059,7 +1118,7 @@
             {
               "condition": "[parameters('deployGpt4Model')]",
               "type": "Microsoft.CognitiveServices/accounts/deployments",
-              "apiVersion": "2025-06-01",
+              "apiVersion": "2025-04-01-preview",
               "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt4DeploymentName'))]",
               "sku": {
                 "name": "Standard",
@@ -1079,7 +1138,7 @@
             {
               "condition": "[parameters('deployVisionModel')]",
               "type": "Microsoft.CognitiveServices/accounts/deployments",
-              "apiVersion": "2025-06-01",
+              "apiVersion": "2025-04-01-preview",
               "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt4VisionDeploymentName'))]",
               "sku": {
                 "name": "Standard",
@@ -1100,7 +1159,7 @@
             {
               "condition": "[parameters('deployGpt52ChatModel')]",
               "type": "Microsoft.CognitiveServices/accounts/deployments",
-              "apiVersion": "2025-06-01",
+              "apiVersion": "2025-04-01-preview",
               "name": "[format('{0}/{1}', parameters('openAIName'), parameters('gpt52ChatDeploymentName'))]",
               "sku": {
                 "name": "GlobalStandard",
@@ -1140,14 +1199,14 @@
               "metadata": {
                 "description": "Azure OpenAI endpoint"
               },
-              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2025-06-01').endpoint]"
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2025-04-01-preview').endpoint]"
             },
             "primaryKey": {
               "type": "string",
               "metadata": {
-                "description": "Azure OpenAI primary key"
+                "description": "Azure OpenAI primary key - Not available when disableLocalAuth is true"
               },
-              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), '2025-06-01').key1]"
+              "value": ""
             },
             "gpt4DeploymentName": {
               "type": "string",
@@ -1242,8 +1301,35 @@
           },
           "azureOpenAIEndpoint": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.endpoint.value), createObject('value', ''))]",
           "azureOpenAIKey": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.primaryKey.value), createObject('value', ''))]",
-          "azureOpenAIDeployment": "[if(parameters('deployAzureOpenAI'), if(parameters('deployGpt52ChatModel'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt52ChatDeploymentName.value), createObject('value', 'gpt-4o')), createObject('value', ''))]",
-          "azureOpenAIVisionDeployment": "[if(parameters('deployAzureOpenAI'), createObject('value', 'gpt-5.2-chat'), createObject('value', ''))]",
+          "azureOpenAIDeployment": "[if(parameters('deployAzureOpenAI'), if(parameters('deployGpt4Model'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt4DeploymentName.value), if(parameters('deployGpt52ChatModel'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt52ChatDeploymentName.value), createObject('value', ''))), createObject('value', ''))]",
+          "azureOpenAIVisionDeployment": "[if(parameters('deployAzureOpenAI'), if(parameters('deployVisionModel'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt4VisionDeploymentName.value), if(parameters('deployGpt4Model'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt4DeploymentName.value), createObject('value', 'gpt-4.1'))), createObject('value', ''))]",
+          "otpSmtpHost": {
+            "value": "[parameters('otpSmtpHost')]"
+          },
+          "otpSmtpPort": {
+            "value": "[parameters('otpSmtpPort')]"
+          },
+          "otpSmtpSecure": {
+            "value": "[parameters('otpSmtpSecure')]"
+          },
+          "otpSmtpUsername": {
+            "value": "[parameters('otpSmtpUsername')]"
+          },
+          "otpSmtpPassword": {
+            "value": "[parameters('otpSmtpPassword')]"
+          },
+          "otpFromEmail": {
+            "value": "[parameters('otpFromEmail')]"
+          },
+          "otpFromName": {
+            "value": "[parameters('otpFromName')]"
+          },
+          "otpEmailSubject": {
+            "value": "[parameters('otpEmailSubject')]"
+          },
+          "otpAppName": {
+            "value": "[parameters('otpAppName')]"
+          },
           "frontendUrls": {
             "value": "[variables('corsUrls')]"
           },
@@ -1258,7 +1344,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "2034238854252791226"
+              "templateHash": "14280113808109347343"
             }
           },
           "parameters": {
@@ -1327,9 +1413,72 @@
             },
             "azureOpenAIVisionDeployment": {
               "type": "string",
+              "defaultValue": "gpt-4.1",
+              "metadata": {
+                "description": "Azure OpenAI vision deployment name"
+              }
+            },
+            "otpSmtpHost": {
+              "type": "string",
+              "defaultValue": "smtp.gmail.com",
+              "metadata": {
+                "description": "OTP SMTP host for custom email OTP delivery"
+              }
+            },
+            "otpSmtpPort": {
+              "type": "string",
+              "defaultValue": "465",
+              "metadata": {
+                "description": "OTP SMTP port for custom email OTP delivery"
+              }
+            },
+            "otpSmtpSecure": {
+              "type": "string",
+              "defaultValue": "true",
+              "metadata": {
+                "description": "OTP SMTP secure flag for custom email OTP delivery"
+              }
+            },
+            "otpSmtpUsername": {
+              "type": "securestring",
               "defaultValue": "",
               "metadata": {
-                "description": "Azure OpenAI GPT-4 Vision deployment name (optional)"
+                "description": "OTP SMTP username for custom email OTP delivery"
+              }
+            },
+            "otpSmtpPassword": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "OTP SMTP password for custom email OTP delivery"
+              }
+            },
+            "otpFromEmail": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "OTP from email address (defaults to SMTP username when empty)"
+              }
+            },
+            "otpFromName": {
+              "type": "string",
+              "defaultValue": "VTC Attendance",
+              "metadata": {
+                "description": "OTP from display name"
+              }
+            },
+            "otpEmailSubject": {
+              "type": "string",
+              "defaultValue": "Your verification code",
+              "metadata": {
+                "description": "OTP email subject"
+              }
+            },
+            "otpAppName": {
+              "type": "string",
+              "defaultValue": "QR Chain Attend",
+              "metadata": {
+                "description": "OTP app name used in email body"
               }
             },
             "frontendUrls": {
@@ -1345,6 +1494,9 @@
                 "description": "Tags to apply to the resource"
               }
             }
+          },
+          "variables": {
+            "otpFromEmailResolved": "[if(empty(parameters('otpFromEmail')), parameters('otpSmtpUsername'), parameters('otpFromEmail'))]"
           },
           "resources": [
             {
@@ -1479,6 +1631,10 @@
                       "value": "[parameters('azureOpenAIVisionDeployment')]"
                     },
                     {
+                      "name": "AZURE_OPENAI_API_VERSION",
+                      "value": "2025-04-01-preview"
+                    },
+                    {
                       "name": "AOAI_ENDPOINT",
                       "value": "[parameters('azureOpenAIEndpoint')]"
                     },
@@ -1493,6 +1649,42 @@
                     {
                       "name": "QR_ENCRYPTION_KEY",
                       "value": "[uniqueString(resourceGroup().id, parameters('functionAppName'), 'qr-encryption')]"
+                    },
+                    {
+                      "name": "OTP_SMTP_HOST",
+                      "value": "[parameters('otpSmtpHost')]"
+                    },
+                    {
+                      "name": "OTP_SMTP_PORT",
+                      "value": "[parameters('otpSmtpPort')]"
+                    },
+                    {
+                      "name": "OTP_SMTP_SECURE",
+                      "value": "[parameters('otpSmtpSecure')]"
+                    },
+                    {
+                      "name": "OTP_SMTP_USERNAME",
+                      "value": "[parameters('otpSmtpUsername')]"
+                    },
+                    {
+                      "name": "OTP_SMTP_PASSWORD",
+                      "value": "[parameters('otpSmtpPassword')]"
+                    },
+                    {
+                      "name": "OTP_FROM_EMAIL",
+                      "value": "[variables('otpFromEmailResolved')]"
+                    },
+                    {
+                      "name": "OTP_FROM_NAME",
+                      "value": "[parameters('otpFromName')]"
+                    },
+                    {
+                      "name": "OTP_EMAIL_SUBJECT",
+                      "value": "[parameters('otpEmailSubject')]"
+                    },
+                    {
+                      "name": "OTP_APP_NAME",
+                      "value": "[parameters('otpAppName')]"
                     }
                   ],
                   "cors": {
@@ -1588,7 +1780,8 @@
           "deployAzureOpenAI": {
             "value": "[parameters('deployAzureOpenAI')]"
           },
-          "openAIName": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.openAIName.value), createObject('value', ''))]"
+          "openAIName": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.openAIName.value), createObject('value', ''))]",
+          "openAIProjectName": "[if(parameters('deployAzureOpenAI'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.projectName.value), createObject('value', ''))]"
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -1597,7 +1790,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "16724010523005562015"
+              "templateHash": "5576456806243503178"
             }
           },
           "parameters": {
@@ -1630,12 +1823,20 @@
               "metadata": {
                 "description": "Azure OpenAI name (if deployed)"
               }
+            },
+            "openAIProjectName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Azure OpenAI project name (if deployed)"
+              }
             }
           },
           "variables": {
             "storageTableDataContributorRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')]",
             "signalRServiceOwnerRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7e4f1700-ea5a-4f59-8f37-079cfe29dce3')]",
-            "cognitiveServicesOpenAIUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')]"
+            "cognitiveServicesOpenAIUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')]",
+            "azureAIUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')]"
           },
           "resources": [
             {
@@ -1671,6 +1872,30 @@
                 "principalId": "[parameters('functionAppPrincipalId')]",
                 "principalType": "ServicePrincipal"
               }
+            },
+            {
+              "condition": "[parameters('deployAzureOpenAI')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), parameters('functionAppPrincipalId'), variables('azureAIUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('azureAIUserRoleId')]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "condition": "[and(parameters('deployAzureOpenAI'), not(equals(parameters('openAIProjectName'), '')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('openAIName'), parameters('openAIProjectName'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('openAIName'), parameters('openAIProjectName')), parameters('functionAppPrincipalId'), variables('azureAIUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('azureAIUserRoleId')]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
             }
           ],
           "outputs": {
@@ -1694,6 +1919,20 @@
                 "description": "OpenAI role assignment for Function App (if deployed)"
               },
               "value": "[if(parameters('deployAzureOpenAI'), extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), parameters('functionAppPrincipalId'), variables('cognitiveServicesOpenAIUserRoleId'))), '')]"
+            },
+            "functionAppAIUserAccountRoleAssignmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure AI User role assignment for Function App at account scope (if deployed)"
+              },
+              "value": "[if(parameters('deployAzureOpenAI'), extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('openAIName')), parameters('functionAppPrincipalId'), variables('azureAIUserRoleId'))), '')]"
+            },
+            "functionAppAIUserProjectRoleAssignmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure AI User role assignment for Function App at project scope (if deployed)"
+              },
+              "value": "[if(and(parameters('deployAzureOpenAI'), not(equals(parameters('openAIProjectName'), ''))), extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('openAIName'), parameters('openAIProjectName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('openAIName'), parameters('openAIProjectName')), parameters('functionAppPrincipalId'), variables('azureAIUserRoleId'))), '')]"
             }
           }
         }
@@ -1812,6 +2051,41 @@
       },
       "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.gpt52ChatDeploymentName.value, '')]"
     },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Foundry project name (if deployed)"
+      },
+      "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.projectName.value, '')]"
+    },
+    "projectEndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "Foundry project endpoint for agents (if deployed)"
+      },
+      "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.projectEndpoint.value, '')]"
+    },
+    "openAIKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure OpenAI primary key (if deployed)"
+      },
+      "value": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.primaryKey.value, '')]"
+    },
+    "storageConnectionString": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage connection string"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.connectionString.value]"
+    },
+    "applicationInsightsConnectionString": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights connection string"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-deployment'), '2025-04-01').outputs.connectionString.value]"
+    },
     "deploymentSummary": {
       "type": "object",
       "metadata": {
@@ -1824,7 +2098,9 @@
         "signalR": "[reference(resourceId('Microsoft.Resources/deployments', 'signalr-deployment'), '2025-04-01').outputs.signalRName.value]",
         "frontend": "CLI-deployed (https://agreeable-pebble-05aa6201e.1.azurestaticapps.net)",
         "functionApp": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-deployment'), '2025-04-01').outputs.functionAppName.value]",
-        "appInsights": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-deployment'), '2025-04-01').outputs.appInsightsName.value]"
+        "appInsights": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-deployment'), '2025-04-01').outputs.appInsightsName.value]",
+        "openAI": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.openAIName.value, 'Not deployed')]",
+        "foundryProject": "[if(parameters('deployAzureOpenAI'), reference(resourceId('Microsoft.Resources/deployments', 'openai-deployment'), '2025-04-01').outputs.projectName.value, 'Not deployed')]"
       }
     }
   }

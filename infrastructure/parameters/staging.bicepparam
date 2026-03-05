@@ -25,6 +25,17 @@ param openAIModelVersion = '0613'
 // Staging capacity settings (moderate for testing)
 param gpt52ChatCapacity = 50  // 50K TPM for staging environment
 
+// OTP SMTP settings (read from environment; no secrets committed)
+param otpSmtpHost = readEnvironmentVariable('OTP_SMTP_HOST', 'smtp.gmail.com')
+param otpSmtpPort = readEnvironmentVariable('OTP_SMTP_PORT', '465')
+param otpSmtpSecure = readEnvironmentVariable('OTP_SMTP_SECURE', 'true')
+param otpSmtpUsername = readEnvironmentVariable('OTP_SMTP_USERNAME', '')
+param otpSmtpPassword = readEnvironmentVariable('OTP_SMTP_PASSWORD', '')
+param otpFromEmail = readEnvironmentVariable('OTP_FROM_EMAIL', '')
+param otpFromName = readEnvironmentVariable('OTP_FROM_NAME', 'VTC Attendance')
+param otpEmailSubject = readEnvironmentVariable('OTP_EMAIL_SUBJECT', 'Your verification code')
+param otpAppName = readEnvironmentVariable('OTP_APP_NAME', 'QR Chain Attend')
+
 // Tags
 param tags = {
   Environment: 'Staging'

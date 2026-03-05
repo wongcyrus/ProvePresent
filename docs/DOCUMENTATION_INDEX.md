@@ -32,7 +32,7 @@
 **Location**: `docs/deployment/`
 
 - **[DEPLOYMENT_GUIDE.md](docs/deployment/DEPLOYMENT_GUIDE.md)** - Complete deployment guide
-- **[AZURE_AD_CONFIG.md](docs/deployment/AZURE_AD_CONFIG.md)** - Azure AD configuration
+- **[AZURE_AD_CONFIG.md](docs/deployment/AZURE_AD_CONFIG.md)** - Azure AD configuration + External ID custom OTP email runbook
 
 ---
 

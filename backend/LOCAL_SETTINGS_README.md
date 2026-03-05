@@ -56,6 +56,22 @@ For local dev without SignalR (polling fallback):
 "AOAI_DEPLOYMENT": "gpt-4"
 ```
 
+#### Custom OTP Email via SMTP
+Used by HTTP function route `/api/auth/on-otp-send-email`.
+```json
+"OTP_SMTP_HOST": "smtp.gmail.com",
+"OTP_SMTP_PORT": "465",
+"OTP_SMTP_SECURE": "true",
+"OTP_SMTP_USERNAME": "your@gmail.com",
+"OTP_SMTP_PASSWORD": "your-16-char-google-app-password",
+"OTP_FROM_EMAIL": "your@gmail.com",
+"OTP_FROM_NAME": "QR Chain Attend",
+"OTP_EMAIL_SUBJECT": "Your verification code",
+"OTP_APP_NAME": "QR Chain Attend"
+```
+
+For Google Workspace, use an App Password (not your normal account password).
+
 ## Environment-Specific Configurations
 
 ### Local Development (Azurite)

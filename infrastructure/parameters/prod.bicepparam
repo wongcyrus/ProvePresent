@@ -35,6 +35,17 @@ param gpt4Capacity = 10  // 10K TPM (not deployed but kept for compatibility)
 param gpt4VisionCapacity = 10  // 10K TPM
 param gpt52ChatCapacity = 100  // 100K TPM for production workload
 
+// OTP SMTP settings (read from environment; no secrets committed)
+param otpSmtpHost = readEnvironmentVariable('OTP_SMTP_HOST', 'smtp.gmail.com')
+param otpSmtpPort = readEnvironmentVariable('OTP_SMTP_PORT', '465')
+param otpSmtpSecure = readEnvironmentVariable('OTP_SMTP_SECURE', 'true')
+param otpSmtpUsername = readEnvironmentVariable('OTP_SMTP_USERNAME', '')
+param otpSmtpPassword = readEnvironmentVariable('OTP_SMTP_PASSWORD', '')
+param otpFromEmail = readEnvironmentVariable('OTP_FROM_EMAIL', '')
+param otpFromName = readEnvironmentVariable('OTP_FROM_NAME', 'VTC Attendance')
+param otpEmailSubject = readEnvironmentVariable('OTP_EMAIL_SUBJECT', 'Your verification code')
+param otpAppName = readEnvironmentVariable('OTP_APP_NAME', 'QR Chain Attend')
+
 // Tags
 param tags = {
   Environment: 'Production'
