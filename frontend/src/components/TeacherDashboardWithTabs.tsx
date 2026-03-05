@@ -145,15 +145,11 @@ interface ChainUpdate {
 interface TeacherDashboardProps {
   sessionId: string;
   onError?: (error: string) => void;
-  onShowEntryQR?: () => void;
-  onShowExitQR?: () => void;
 }
 
 const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
   sessionId,
   onError,
-  onShowEntryQR,
-  onShowExitQR,
 }) => {
   // Tab state
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -839,8 +835,6 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
           attendance={attendance}
           stats={stats}
           onlineStudentCount={onlineStudentCount}
-          onShowEntryQR={onShowEntryQR || (() => {})}
-          onShowExitQR={onShowExitQR || (() => {})}
         />
       )}
 

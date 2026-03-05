@@ -53,6 +53,7 @@ export const TeacherCaptureControl = forwardRef<TeacherCaptureControlHandle, Tea
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<SeatingPosition[] | null>(null);
+  const [imageUrls, setImageUrls] = useState<Map<string, string> | undefined>(undefined);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
 
   /**
@@ -157,17 +158,46 @@ export const TeacherCaptureControl = forwardRef<TeacherCaptureControlHandle, Tea
    * Handle capture results event from SignalR
    * Requirements: 6.3, 7.3
    */
-  const handleCaptureResults = useCallback((event: CaptureResultsEvent) => {
+  const handleCaptureResults = useCallback(async (event: CaptureResultsEvent) => {
     if (event.captureRequestId === captureRequestId) {
       if (event.status === 'COMPLETED') {
         setStatus('completed');
         setResults(event.positions || null);
+        
+        // Fetch full results from API to get imageUrls with fresh SAS tokens
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+          const headers = await getAuthHeaders();
+          const response = await fetch(
+            `${apiUrl}/sessions/${sessionId}/capture/${event.captureRequestId}/results`,
+            {
+              method: 'GET',
+              credentials: 'include',
+              headers
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.imageUrls) {
+              // Convert Record<string, string> to Map<string, string>
+              const urlMap = new Map<string, string>(Object.entries(data.imageUrls));
+              setImageUrls(urlMap);
+              console.log('[Capture] Loaded image URLs for', urlMap.size, 'students');
+            }
+          } else {
+            console.warn('[Capture] Failed to fetch image URLs:', response.status);
+          }
+        } catch (err) {
+          console.warn('[Capture] Error fetching image URLs:', err);
+          // Don't fail the whole operation if we can't get images
+        }
       } else {
         setStatus('failed');
         setError(event.errorMessage || 'Analysis failed');
       }
     }
-  }, [captureRequestId]);
+  }, [captureRequestId, sessionId]);
 
   // Expose handler methods to parent via ref
   useImperativeHandle(ref, () => ({
@@ -188,6 +218,7 @@ export const TeacherCaptureControl = forwardRef<TeacherCaptureControlHandle, Tea
     setTimeRemaining(0);
     setError(null);
     setResults(null);
+    setImageUrls(undefined);
   };
 
   // Determine if button should be enabled
@@ -519,7 +550,7 @@ export const TeacherCaptureControl = forwardRef<TeacherCaptureControlHandle, Tea
               {/* Grid View */}
               {viewMode === 'grid' && (
                 <div style={{ marginBottom: '1rem' }}>
-                  <SeatingGridVisualization positions={results} imageUrls={undefined} />
+                  <SeatingGridVisualization positions={results} imageUrls={imageUrls} />
                 </div>
               )}
 

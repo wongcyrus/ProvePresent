@@ -535,7 +535,7 @@ export default function TeacherPage() {
         padding: '2rem',
         fontFamily: 'system-ui, sans-serif'
       }}>
-        <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <button 
             onClick={() => {
               setSelectedSessionId(null);
@@ -564,6 +564,76 @@ export default function TeacherPage() {
             }}
           >
             ← Back to Sessions
+          </button>
+          
+          {/* Entry QR Button */}
+          <button 
+            onClick={() => {
+              if (currentSession) {
+                handleShowEntryQR(currentSession);
+              }
+            }}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#48bb78',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 8px rgba(72, 187, 120, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(72, 187, 120, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(72, 187, 120, 0.3)';
+            }}
+          >
+            <span>📥</span>
+            Entry QR
+          </button>
+          
+          {/* Exit QR Button */}
+          <button 
+            onClick={() => {
+              if (currentSession) {
+                handleShowExitQR(currentSession);
+              }
+            }}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#ed8936',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 8px rgba(237, 137, 54, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(237, 137, 54, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(237, 137, 54, 0.3)';
+            }}
+          >
+            <span>📤</span>
+            Exit QR
           </button>
         </div>
         
@@ -597,18 +667,6 @@ export default function TeacherPage() {
         <TeacherDashboard 
           sessionId={selectedSessionId}
           onError={handleError}
-          onShowEntryQR={() => {
-            const currentSession = sessions.find(s => s.sessionId === selectedSessionId);
-            if (currentSession) {
-              handleShowEntryQR(currentSession);
-            }
-          }}
-          onShowExitQR={() => {
-            const currentSession = sessions.find(s => s.sessionId === selectedSessionId);
-            if (currentSession) {
-              handleShowExitQR(currentSession);
-            }
-          }}
         />
         
         {/* QR Code Modal for Dashboard */}

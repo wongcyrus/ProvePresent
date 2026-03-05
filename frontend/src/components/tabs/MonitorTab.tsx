@@ -33,16 +33,12 @@ interface MonitorTabProps {
   attendance: AttendanceRecord[];
   stats: SessionStats;
   onlineStudentCount: number;
-  onShowEntryQR: () => void;
-  onShowExitQR: () => void;
 }
 
 export const MonitorTab: React.FC<MonitorTabProps> = ({
   attendance,
   stats,
   onlineStudentCount,
-  onShowEntryQR,
-  onShowExitQR,
 }) => {
   const [showGpsMissingOnly, setShowGpsMissingOnly] = React.useState(false);
 
@@ -74,78 +70,6 @@ export const MonitorTab: React.FC<MonitorTabProps> = ({
 
   return (
     <div>
-      {/* Quick Actions */}
-      <div style={{
-        display: 'flex',
-        gap: '1rem',
-        marginBottom: '1.5rem',
-        flexWrap: 'wrap'
-      }}>
-        <button 
-          onClick={onShowEntryQR}
-          style={{
-            flex: '1 1 200px',
-            padding: '1rem 1.5rem',
-            backgroundColor: '#48bb78',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            cursor: 'pointer',
-            fontSize: '1rem',
-            fontWeight: '600',
-            transition: 'all 0.2s',
-            boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(72, 187, 120, 0.4)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(72, 187, 120, 0.3)';
-          }}
-        >
-          <span style={{ fontSize: '1.5rem' }}>📥</span>
-          Show Entry QR
-        </button>
-        
-        <button 
-          onClick={onShowExitQR}
-          style={{
-            flex: '1 1 200px',
-            padding: '1rem 1.5rem',
-            backgroundColor: '#ed8936',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            cursor: 'pointer',
-            fontSize: '1rem',
-            fontWeight: '600',
-            transition: 'all 0.2s',
-            boxShadow: '0 4px 12px rgba(237, 137, 54, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(237, 137, 54, 0.4)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(237, 137, 54, 0.3)';
-          }}
-        >
-          <span style={{ fontSize: '1.5rem' }}>📤</span>
-          Show Exit QR
-        </button>
-      </div>
-
       {/* Key Statistics */}
       <div style={{ 
         display: 'grid', 
