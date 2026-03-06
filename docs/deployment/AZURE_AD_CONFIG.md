@@ -42,7 +42,7 @@ Use this section when you want Microsoft Entra to send OTP through your own mail
 	- Select **Create new app registration**.
 	- Suggested name: `qrattend-emailotp-events-api`.
 5. **Applications**:
-	- Add only your sign-in app (for this project: `QRChainAttend External Login`).
+	- Add only your sign-in app (for this project: `ProvePresent External Login`).
 	- Do not select `b2c-extensions-app`.
 6. **Review** → **Create**.
 7. Open the created extension and run **Grant permission / Admin consent**.

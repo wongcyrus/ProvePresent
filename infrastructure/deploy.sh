@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy QR Chain Attendance System infrastructure to Azure
+# Deploy ProvePresent infrastructure to Azure
 # Requirements: 19.1, 19.2, 19.3, 19.4, 19.5
 
 set -e
@@ -113,7 +113,7 @@ fi
 
 # Print header
 echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}QR Chain Attendance System Deployment${NC}"
+echo -e "${CYAN}ProvePresent Infrastructure Deployment${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
 echo -e "${YELLOW}Environment:     $ENVIRONMENT${NC}"

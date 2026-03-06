@@ -52,7 +52,7 @@ param otpAppName = readEnvironmentVariable('OTP_APP_NAME', 'QR Chain Attend')
 // Tags
 param tags = {
   Environment: 'Development'
-  Application: 'QR Chain Attendance'
+  Application: 'ProvePresent'
   ManagedBy: 'Bicep'
   CostCenter: 'Engineering'
 }

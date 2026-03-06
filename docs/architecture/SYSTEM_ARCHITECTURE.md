@@ -7,7 +7,7 @@
 
 ## Overview
 
-The QR Chain Attendance System is a real-time attendance tracking application built on Azure services with a focus on security, scalability, and user experience. Infrastructure is managed via Azure Bicep (IaC) with automated deployment scripts.
+ProvePresent is a real-time attendance verification system built on Azure services with a focus on security, scalability, and user experience. Infrastructure is managed via Azure Bicep (IaC) with automated deployment scripts.
 
 ## Architecture Diagram
 

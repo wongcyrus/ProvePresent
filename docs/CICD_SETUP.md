@@ -52,7 +52,7 @@ chmod +x scripts/setup-cicd-credentials.sh
 ./scripts/setup-cicd-credentials.sh \
   "12345678-1234-1234-1234-123456789012" \
   "rg-qr-attendance" \
-  "wongcyrus/QRChainAttend"
+  "wongcyrus/ProvePresent"
 ```
 
 ### Step 2: Verify GitHub Secrets

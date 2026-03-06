@@ -449,7 +449,7 @@ verify_external_id_login() {
 }
 
 echo -e "${BLUE}=========================================="
-echo "QR Chain Attendance - Full Development Deployment"
+echo "ProvePresent - Full Development Deployment"
 echo -e "==========================================${NC}"
 echo ""
 

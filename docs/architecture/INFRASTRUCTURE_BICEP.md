@@ -7,7 +7,7 @@
 
 ## Overview
 
-The QR Chain Attendance System uses Azure Bicep for Infrastructure as Code (IaC), providing declarative, repeatable deployments across development and production environments.
+ProvePresent uses Azure Bicep for Infrastructure as Code (IaC), providing declarative, repeatable deployments across development and production environments.
 
 ## Architecture Diagram
 

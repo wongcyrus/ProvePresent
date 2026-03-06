@@ -15,8 +15,8 @@ Quick guide to get the QR Chain Attendance System running locally.
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd QRChainAttend
+git clone https://github.com/wongcyrus/ProvePresent
+cd ProvePresent
 
 # Install all dependencies
 npm run install:all

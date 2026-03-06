@@ -1,7 +1,7 @@
 {
-  "name": "qr-chain-attendance",
-  "version": "1.0.0",
-  "description": "QR Chain Attendance System - Anti-cheat classroom attendance with peer-to-peer verification",
+  "name": "prove-present",
+  "version": "3.0.0",
+  "description": "ProvePresent - Peer-verified classroom attendance with chain technology and AI-powered engagement",
   "private": true,
   "workspaces": [
     "frontend"

@@ -1,6 +1,6 @@
-# QR Chain Attendance System - Infrastructure as Code
+# ProvePresent - Infrastructure as Code
 
-This directory contains Bicep templates and deployment scripts for provisioning all Azure resources required by the QR Chain Attendance System.
+This directory contains Bicep templates and deployment scripts for provisioning all Azure resources required by ProvePresent.
 
 ## Overview
 

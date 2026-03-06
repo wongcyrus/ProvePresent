@@ -1,257 +1,127 @@
-# QR Chain Attendance System
+# ProvePresent
 
-A comprehensive, real-time attendance tracking system using QR code chains, geolocation, and Azure services with AI-powered Live Quiz feature.
+**Peer-Verified Classroom Attendance**
 
-## 🚀 Quick Start
-
-**Production URL**: https://ashy-desert-0fc9a700f.6.azurestaticapps.net
-
-**Status**: ✅ Live with SignalR Standard S1 (1000 connections)
-
-**Login**:
-- Teachers: `@vtc.edu.hk` email addresses (excluding `@stu.vtc.edu.hk`)
-- Students: `@stu.vtc.edu.hk` email addresses
-
-## 📚 Documentation
-
-**Complete Documentation Index**: See [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) for all documentation files.
-
-### Essential Guides
-- **[Getting Started](GETTING_STARTED.md)** - Setup and first steps
-- **[Project Status](PROJECT_STATUS.md)** - Current deployment status
-- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Complete deployment guide
-- **[Live Quiz Guide](LIVE_QUIZ.md)** - AI-powered quiz feature
-- **[Student Image Capture](CAPTURE_FEATURE_COMPLETE.md)** - Photo capture & seating analysis
-
-### Quick Links
-- **[System Architecture](SYSTEM_ARCHITECTURE.md)** - System design
-- **[Database Schema](DATABASE_TABLES.md)** - 12 tables
-- **[SignalR Configuration](SIGNALR_CONFIGURATION.md)** - Real-time updates
-- **[Local Development](LOCAL_DEVELOPMENT.md)** - Development setup
-
-### Complete Documentation
-- **[Full Documentation Index](DOCS_INDEX.md)** - All documentation
-
-## 🎯 Key Features
-
-### Core Features
-- **QR Chain Technology**: Secure token passing prevents cheating
-- **Entry/Exit QR Codes**: Separate QR codes for entry and exit verification
-- **Real-time Updates**: SignalR for live attendance monitoring
-- **Role-Based Access**: Automatic email domain-based authentication
-
-### Advanced Features
-- **Student Image Capture**: AI-powered seating arrangement analysis with GPT-4o vision
-- **Recurring Sessions**: Create daily, weekly, or monthly recurring sessions
-- **Geolocation Tracking**: Location-based attendance with warning/enforce modes (default 1000m radius)
-- **Attendance Snapshots**: On-demand snapshots via chains to record instant attendance
-- **Entry/Exit Methods**: Track how attendance was verified (Chain vs Direct QR)
-- **Export Functionality**: Download attendance as CSV or JSON with method tracking
-
-### User Experience
-- **Progressive Web App**: Installable on mobile devices
-- **Offline Support**: Works offline with service worker caching
-- **Mobile-First Design**: Optimized for smartphones
-- **Account Switching**: Easy switching between multiple accounts
-
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js 15, React 18, TypeScript
-- **Backend**: Azure Functions v4 (Node.js 20)
-- **Database**: Azure Table Storage
-- **Real-time**: Azure SignalR Service
-- **Auth**: Azure AD (Static Web Apps)
-- **Hosting**: Azure Static Web Apps
-
-## 📦 Project Structure
-
-```
-├── backend/          # Azure Functions API
-├── frontend/         # Next.js web application
-├── infrastructure/   # Bicep IaC templates
-├── docs/            # Detailed documentation
-└── scripts/         # Utility scripts
-```
-
-## 🔧 Local Development
-
-```bash
-# Install dependencies
-npm install
-
-# Start local development
-./dev-tools.sh start
-
-# Frontend: http://localhost:3000
-# Backend: http://localhost:7071
-```
-
-See [Getting Started](GETTING_STARTED.md) for detailed setup instructions.
-
-## 🚢 Deployment
-
-```bash
-# Deploy to Azure (both backend and frontend)
-./deploy-to-azure.sh
-```
-
-See [Deployment Guide](DEPLOYMENT_GUIDE.md) for details.
-
-## 🔐 Authentication
-
-- **Production**: Azure AD authentication via Static Web Apps
-- **Local Dev**: Mock authentication for testing
-- **Roles**: Automatically assigned based on email domain
-  - `@vtc.edu.hk` (excluding `@stu.vtc.edu.hk`) → Teacher
-  - `@stu.vtc.edu.hk` → Student
-
-## 📊 Features by Role
-
-### Teachers
-- **Session Management**
-  - Create single or recurring sessions (daily, weekly, monthly)
-  - Edit sessions with scope control (this, future, all)
-  - Delete sessions with cascade cleanup
-  - Configure geofence and constraints
-  
-- **Attendance Monitoring**
-  - Real-time attendance dashboard
-  - View student online/offline status
-  - Track entry/exit verification
-  - Monitor location warnings
-  - See active chain holders
-  
-- **QR Code Management**
-  - Generate entry QR codes (auto-refresh every 10s)
-  - Generate exit QR codes (auto-refresh every 10s)
-  - Seed and reseed chains
-  - Control chain flow
-  
-- **Snapshots & Analysis**
-  - Take on-demand attendance snapshots via chains
-  - View snapshot history with metadata
-  - Track who was present at specific moments
-  - Simple, focused snapshot interface
-  
-- **Export & Reporting**
-  - Export attendance as CSV
-  - Export attendance as JSON
-  - Include location data
-  - Include chain trace data
-
-### Students
-- **Session Participation**
-  - Join sessions via QR code scan
-  - Scan entry chain QR codes
-  - Scan exit chain QR codes
-  - View personal attendance status
-  
-- **Real-time Updates**
-  - See current holder status
-  - Display own QR code when holder
-  - Receive attendance updates
-  - View session information
-  
-- **Mobile Experience**
-  - Offline support for scanning
-  - PWA installation
-  - Mobile-optimized interface
-  - Camera-based QR scanning
-
-## 🏗️ Architecture
-
-### Backend (44 Functions)
-- **Authentication** (2): Role assignment, user info
-- **Session Management** (8): CRUD operations with recurring support
-- **QR Code Generation** (5): Entry, exit, late, early leave QR codes
-- **Chain Management** (7): Seed, reseed, scan, close, set holder operations
-- **Attendance** (5): Tracking with entry/exit methods, verification, export
-- **Snapshots** (5): Create on-demand snapshots via chains, history, comparison
-- **SignalR** (4): Real-time connections for teacher and student
-- **Quiz** (5): AI-powered slide analysis, question generation, delivery, evaluation
-- **Utilities**: Session checks, geolocation validation, token encryption
-
-**Note**: Token refresh is client-driven (on-demand) - `rotateTokens` function removed.
-
-### Frontend (22+ Components)
-- **Pages**: Home, teacher dashboard, student view
-- **Session Management**: Creation, editing, listing
-- **QR Components**: Display, scanner, modal
-- **Dashboard**: Real-time attendance monitoring
-- **Snapshots**: Manager, trace viewer, comparison
-- **Utilities**: Offline indicator, error display
-
-### Database (12 Tables)
-- **Sessions**: Session metadata with recurring support
-- **Attendance**: Student attendance records with entry/exit methods
-- **Chains**: QR chain state and holders (ENTRY/EXIT/SNAPSHOT phases)
-- **Tokens**: Chain tokens with 10-second expiration
-- **UserSessions**: User session mapping
-- **AttendanceSnapshots**: On-demand snapshot metadata
-- **ChainHistory**: Chain transfer audit trail
-- **ScanLogs**: QR scan audit log
-- **DeletionLog**: Session deletion audit trail
-- **QuizQuestions**: AI-generated quiz questions
-- **QuizResponses**: Student quiz answers
-- **QuizMetrics**: Quiz performance and engagement scores
-
-## 🔒 Security
-
-- **Authentication**: Azure AD with email domain-based roles
-- **Authorization**: Role-based access control (RBAC)
-- **Data Protection**: Encrypted QR tokens with expiration
-- **Audit Trail**: Deletion logs, scan logs, location tracking
-- **Secure Storage**: Azure Table Storage with managed identities
-- **No Secrets in Code**: All credentials in Azure Key Vault
-
-## 🐛 Troubleshooting
-
-**Authentication Issues**:
-- Wrong role assigned → Verify email domain matches expected pattern
-- Can't login → Check Azure AD configuration
-- 401 Errors → Check authentication headers
-
-**Session Issues**:
-- Can't create session → Verify teacher role
-- Geofence not working → Check location permissions
-- QR codes not refreshing → Check browser console for errors
-
-**Attendance Issues**:
-- Location warnings → Increase geofence radius or use warning mode
-- Chain not passing → Check if student is holder
-- Exit not verified → Ensure exit chain is started
-
-See [Deployment Checklist](DEPLOYMENT_CHECKLIST.md) for complete troubleshooting guide.
-
-## 📈 Project Status
-
-**Current Version**: 2.0  
-**Status**: ✅ Production Ready  
-**Features**: 12 major features fully implemented  
-**Backend Functions**: 44 functions operational (rotateTokens removed)  
-**Frontend Components**: 22+ components working  
-**Database Tables**: 12 tables with consistent timestamps (Unix seconds)  
-**Documentation**: Updated to reflect current codebase  
-**Testing**: Manual testing (automated tests planned)
-
-See [Project Status](PROJECT_STATUS.md) for detailed information.
-
-## 📝 License
-
-MIT License - See LICENSE file for details
-
-## 👥 Support
-
-For issues or questions:
-1. Check the [Documentation Index](DOCS_INDEX.md)
-2. Review the [Deployment Checklist](DEPLOYMENT_CHECKLIST.md)
-3. Contact the development team
-
-## 🙏 Acknowledgments
-
-Built with Azure services and modern web technologies.
+Students prove they're actually in class by passing verification tokens to each other. No more proxy attendance or buddy check-ins.
 
 ---
 
-**Last Updated**: February 10, 2026  
-**Version**: 2.0
+## How It Works
+
+1. **Teacher starts a session** → Entry chains are seeded to random students
+2. **Students pass the chain** → Scan QR codes from classmates to verify presence
+3. **Chain completes** → Everyone who participated is marked present
+4. **Exit verification** → Same process when class ends
+
+The chain mechanism ensures students must be physically present to participate - you can't pass a QR code to someone who isn't there.
+
+---
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Chain Verification** | Peer-to-peer token passing proves physical presence |
+| **Real-time Dashboard** | Teachers see live attendance as chains progress |
+| **Live Quiz** | AI generates questions from lecture slides (GPT-4) |
+| **Seating Analysis** | Capture photos to analyze classroom arrangement |
+| **Geolocation** | Optional location validation with configurable radius |
+| **Recurring Sessions** | Daily, weekly, or monthly schedules |
+| **Export** | CSV/JSON with full audit trail |
+
+---
+
+## Tech Stack
+
+```
+Frontend:     Next.js 15 + React 18 + TypeScript
+Backend:      Azure Functions v4 (Node.js 22)
+Database:     Azure Table Storage (16 tables)
+Real-time:    Azure SignalR Service
+AI:           Azure OpenAI + Foundry Agent Service
+Auth:         Azure AD External ID
+Hosting:      Azure Static Web Apps
+```
+
+---
+
+## Quick Start
+
+### Deploy to Azure
+
+```bash
+# Production
+./deploy-full-production.sh
+
+# Development
+./deploy-full-development.sh
+```
+
+### Local Development
+
+```bash
+npm install
+./start-local-dev.sh
+
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:7071
+```
+
+---
+
+## Project Structure
+
+```
+├── backend/           # Azure Functions (44+ endpoints)
+├── frontend/          # Next.js application
+├── infrastructure/    # Bicep IaC templates
+├── docs/
+│   ├── architecture/  # System design
+│   ├── deployment/    # Deploy guides
+│   └── development/   # Dev setup
+└── scripts/           # Utilities
+```
+
+---
+
+## Documentation
+
+- **[Getting Started](GETTING_STARTED.md)** - Setup guide
+- **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** - Azure deployment
+- **[System Architecture](docs/architecture/SYSTEM_ARCHITECTURE.md)** - Technical design
+- **[Infrastructure](docs/architecture/INFRASTRUCTURE_BICEP.md)** - Bicep modules
+- **[Full Index](DOCUMENTATION_INDEX.md)** - All docs
+
+---
+
+## Authentication
+
+Roles are assigned automatically by email domain:
+
+| Domain | Role |
+|--------|------|
+| `@vtc.edu.hk` (excluding students) | Teacher |
+| `@stu.vtc.edu.hk` | Student |
+
+---
+
+## Status
+
+**Version**: 3.0  
+**Status**: ✅ Production Ready
+
+| Component | Count |
+|-----------|-------|
+| Backend Functions | 44+ |
+| Frontend Components | 22+ |
+| Database Tables | 16 |
+
+---
+
+## License
+
+MIT
+
+---
+
+**Last Updated**: March 5, 2026

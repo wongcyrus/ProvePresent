@@ -101,8 +101,8 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-0
     type: 'SystemAssigned'
   }
   properties: {
-    displayName: 'QR Attendance Project'
-    description: 'Project for QR Chain Attendance application with Agent Service'
+    displayName: 'ProvePresent Project'
+    description: 'Project for ProvePresent application with Agent Service'
   }
 }
 

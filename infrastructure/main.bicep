@@ -1,5 +1,5 @@
-// QR Chain Attendance System - Main Infrastructure Template
-// This template orchestrates all Azure resources for the QR Chain Attendance System
+// ProvePresent - Main Infrastructure Template
+// This template orchestrates all Azure resources for ProvePresent
 // Requirements: 19.1, 19.2, 19.3, 19.4, 19.5
 
 targetScope = 'resourceGroup'
@@ -110,7 +110,7 @@ param otpAppName string = 'QR Chain Attend'
 @description('Tags to apply to all resources')
 param tags object = {
   Environment: environment
-  Application: 'QR Chain Attendance'
+  Application: 'ProvePresent'
   ManagedBy: 'Bicep'
 }
 

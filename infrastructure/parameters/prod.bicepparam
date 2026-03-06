@@ -47,7 +47,7 @@ param otpAppName = readEnvironmentVariable('OTP_APP_NAME', 'QR Chain Attend')
 // Tags
 param tags = {
   Environment: 'Production'
-  Application: 'QR Chain Attendance'
+  Application: 'ProvePresent'
   ManagedBy: 'Bicep'
   DeploymentMethod: 'Hybrid'  // Bicep for backend + CLI for Static Web App
   CostCenter: 'Engineering'

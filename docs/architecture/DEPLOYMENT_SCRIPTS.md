@@ -7,7 +7,7 @@
 
 ## Overview
 
-The QR Chain Attendance System uses comprehensive bash scripts for automated deployment. These scripts orchestrate Bicep infrastructure deployment, backend function deployment, frontend build/deploy, and post-deployment configuration.
+ProvePresent uses comprehensive bash scripts for automated deployment. These scripts orchestrate Bicep infrastructure deployment, backend function deployment, frontend build/deploy, and post-deployment configuration.
 
 ## Script Hierarchy
 
