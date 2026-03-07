@@ -4,7 +4,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 import { getCoTeachers } from '../utils/sessionAccess';
 // Inline types
@@ -35,16 +35,15 @@ export async function getTeacherSessions(
 
   try {
     // Parse authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
-      context.log('Missing client principal header (x-ms-client-principal or x-client-principal)');
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
+      context.log('Missing authentication');
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
     }
 
-    const principal = parseUserPrincipal(principalHeader);
     const userId = getUserId(principal);
     const isTeacher = hasRole(principal, 'teacher') || hasRole(principal, 'Teacher');
     

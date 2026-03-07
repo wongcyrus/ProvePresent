@@ -122,7 +122,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
           marginBottom: '1.5rem',
           border: `3px solid ${type === 'ENTRY' ? '#48bb78' : '#ed8936'}`
         }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrDataUrl} alt={`${type} QR Code`} style={{
             display: 'block',
             borderRadius: '8px'

@@ -240,64 +240,9 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
   };
 
   /**
-   * Capture screenshot and analyze with AI
-   */
-  const captureAndAnalyze = async (stream: MediaStream) => {
-    try {
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      video.play();
-      
-      await new Promise(resolve => {
-        video.onloadedmetadata = resolve;
-      });
-      
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(video, 0, 0);
-      
-      const base64Image = canvas.toDataURL('image/jpeg', 0.8);
-      
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-      const headers = await getAuthHeaders();
-      
-      const response = await fetch(`${apiUrl}/sessions/${sessionId}/quiz/analyze-slide`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          image: base64Image
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to analyze slide');
-      }
-      
-      const data = await response.json();
-      
-      setQuizStats(prev => ({
-        ...prev,
-        capturesCount: prev.capturesCount + 1
-      }));
-      
-      await generateAndSendQuestion(data.slideId, data.analysis, data.imageUrl);
-      
-    } catch (error: any) {
-      console.error('Capture error:', error);
-      setError('Failed to capture screen: ' + error.message);
-    }
-  };
-
-  /**
    * Generate question and send to student automatically
    */
-  const generateAndSendQuestion = async (slideId: string, analysis: any, slideImageUrl: string) => {
+  const generateAndSendQuestion = useCallback(async (slideId: string, analysis: any, slideImageUrl: string) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
       const headers = await getAuthHeaders();
@@ -372,7 +317,62 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
     } catch (error: any) {
       console.error('Generate/send error:', error);
     }
-  };
+  }, [sessionId]);
+
+  /**
+   * Capture screenshot and analyze with AI
+   */
+  const captureAndAnalyze = useCallback(async (stream: MediaStream) => {
+    try {
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+      
+      await new Promise(resolve => {
+        video.onloadedmetadata = resolve;
+      });
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(video, 0, 0);
+      
+      const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+      
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const headers = await getAuthHeaders();
+      
+      const response = await fetch(`${apiUrl}/sessions/${sessionId}/quiz/analyze-slide`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          image: base64Image
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to analyze slide');
+      }
+      
+      const data = await response.json();
+      
+      setQuizStats(prev => ({
+        ...prev,
+        capturesCount: prev.capturesCount + 1
+      }));
+      
+      await generateAndSendQuestion(data.slideId, data.analysis, data.imageUrl);
+      
+    } catch (error: any) {
+      console.error('Capture error:', error);
+      setError('Failed to capture screen: ' + error.message);
+    }
+  }, [sessionId, generateAndSendQuestion]); // Add generateAndSendQuestion as dependency
 
   /**
    * Continuous capture loop (runs in background)
@@ -393,7 +393,7 @@ const TeacherDashboardComponent: React.FC<TeacherDashboardProps> = ({
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [quizActive, screenStream, lastCaptureTime, captureInterval]);
+  }, [quizActive, screenStream, lastCaptureTime, captureInterval, captureAndAnalyze]);
 
   /**
    * Fetch initial session data

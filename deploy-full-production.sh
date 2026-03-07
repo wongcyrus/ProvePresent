@@ -18,6 +18,7 @@ LOCATION="eastus2"
 DEPLOYMENT_NAME="qr-attendance-prod-deployment"
 DESIRED_SWA_SKU="Standard"
 OTP_CREDENTIALS_FILE=".otp-email-credentials"
+JWT_CONFIG_FILE=".jwt-otp-config"
 
 load_key_value_file() {
     local file_path="$1"
@@ -51,6 +52,32 @@ load_key_value_file() {
         [ -z "$key" ] && continue
         export "$key=$value"
     done < "$file_path"
+}
+
+load_jwt_otp_config() {
+    if [ -f "$JWT_CONFIG_FILE" ]; then
+        echo "Loading JWT and OTP configuration from $JWT_CONFIG_FILE..."
+        load_key_value_file "$JWT_CONFIG_FILE"
+    fi
+
+    # Set defaults for optional values
+    JWT_EXPIRY_HOURS="${JWT_EXPIRY_HOURS:-24}"
+    OTP_EXPIRY_MINUTES="${OTP_EXPIRY_MINUTES:-5}"
+    OTP_MAX_ATTEMPTS="${OTP_MAX_ATTEMPTS:-3}"
+    OTP_RATE_LIMIT_MINUTES="${OTP_RATE_LIMIT_MINUTES:-15}"
+    OTP_RATE_LIMIT_COUNT="${OTP_RATE_LIMIT_COUNT:-3}"
+
+    export JWT_SECRET JWT_EXPIRY_HOURS
+    export OTP_EXPIRY_MINUTES OTP_MAX_ATTEMPTS OTP_RATE_LIMIT_MINUTES OTP_RATE_LIMIT_COUNT
+
+    if [ -n "${JWT_SECRET:-}" ]; then
+        echo -e "${GREEN}✓ JWT_SECRET configured${NC}"
+    else
+        echo -e "${YELLOW}⚠ JWT_SECRET not found in $JWT_CONFIG_FILE${NC}"
+        echo "  JWT_SECRET will need to be configured in Function App settings"
+        echo "  Generate a secure secret: openssl rand -hex 32"
+        echo "  Or run: ./setup-jwt-config.sh"
+    fi
 }
 
 load_otp_email_credentials() {
@@ -404,140 +431,25 @@ resolve_runtime_agent_id() {
     fi
 }
 
-verify_external_id_login() {
-    local app_url="$1"
-    local expected_tenant_id="$2"
-
-    echo "Validating External ID login authority..."
-    final_login_url=$(curl -s -L -o /dev/null -w '%{url_effective}' "$app_url/.auth/login/aad" || true)
-    first_location=$(curl -s -I "$app_url/.auth/login/aad" | awk 'BEGIN{IGNORECASE=1}/^location:/{print $2; exit}' | tr -d '\r')
-
-    if [ -z "$final_login_url" ]; then
-        echo -e "${RED}✗ Could not resolve SWA login redirect URL${NC}"
-        return 1
-    fi
-
-    if echo "$final_login_url $first_location" | grep -qi '/common/oauth2'; then
-        echo -e "${RED}✗ SWA auth fallback detected (common endpoint)${NC}"
-        echo "  Final login URL: $final_login_url"
-        if [ -n "$first_location" ]; then
-            echo "  First redirect:  $first_location"
-        fi
-        return 1
-    fi
-
-    if [[ "$final_login_url" == *"$expected_tenant_id"* ]] || [[ "$final_login_url" == *"ciamlogin.com"* ]] || [[ "$first_location" == *"$expected_tenant_id"* ]] || [[ "$first_location" == *"ciamlogin.com"* ]]; then
-        echo -e "${GREEN}✓ External ID login authority validated${NC}"
-        return 0
-    fi
-
-    if [[ "$final_login_url" == *"/.auth/login/aad?post_login_redirect_uri="* ]] || [[ "$first_location" == *"/.auth/login/aad?post_login_redirect_uri="* ]]; then
-        echo -e "${YELLOW}⚠ Login authority verification inconclusive (SWA nonce redirect)${NC}"
-        echo "  Final login URL: $final_login_url"
-        echo "  Proceeding because no '/common' fallback was detected."
-        return 0
-    fi
-
-    echo -e "${YELLOW}⚠ SWA login redirect could not be conclusively validated${NC}"
-    echo "  Expected tenant: $expected_tenant_id"
-    echo "  Final login URL: $final_login_url"
-    if [ -n "$first_location" ]; then
-        echo "  First redirect:  $first_location"
-    fi
-    echo "  Proceeding because no '/common' fallback was detected."
-    return 0
-}
+# Azure AD function removed - now using OTP authentication
 
 echo -e "${BLUE}=========================================="
 echo "ProvePresent - Full Production Deployment"
 echo -e "==========================================${NC}"
 echo ""
 
-# Step 0: Load and validate credentials
-echo -e "${BLUE}Step 0: Loading credentials...${NC}"
+# Step 0: Load JWT configuration
+echo -e "${BLUE}Step 0: Loading JWT configuration...${NC}"
 
-# Check if credentials file exists
-if [ ! -f ".external-id-credentials" ]; then
-    echo -e "${RED}✗ Missing .external-id-credentials file${NC}"
-    echo ""
-    echo "This file must exist in the project root and contain:"
-    echo "  - AAD_CLIENT_ID"
-    echo "  - AAD_CLIENT_SECRET"
-    echo "  - TENANT_ID"
-    echo "  - EXTERNAL_ID_ISSUER"
-    echo ""
-    echo "Please create this file before running deployment."
-    exit 1
-fi
+# Load JWT and OTP configuration from file (similar to email credentials)
+load_jwt_otp_config
 
-# Load credentials
-echo "Loading credentials from .external-id-credentials..."
-source ./.external-id-credentials
-
-# Validate required variables
-if [ -z "$AAD_CLIENT_ID" ] || [ -z "$AAD_CLIENT_SECRET" ] || [ -z "$TENANT_ID" ]; then
-    echo -e "${RED}✗ Missing required credentials in .external-id-credentials${NC}"
-    echo ""
-    echo "Required variables:"
-    echo "  - AAD_CLIENT_ID: ${AAD_CLIENT_ID:-NOT SET}"
-    echo "  - AAD_CLIENT_SECRET: ${AAD_CLIENT_SECRET:-NOT SET}"
-    echo "  - TENANT_ID: ${TENANT_ID:-NOT SET}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Credentials loaded successfully${NC}"
-echo "  Tenant ID: $TENANT_ID"
-echo "  Client ID: ${AAD_CLIENT_ID:0:8}..."
+echo -e "${GREEN}✓ JWT configuration ready${NC}"
 echo ""
 
-# Step 0.5: Azure AD Configuration
-echo -e "${BLUE}Step 0.5: Validating Azure AD Configuration${NC}"
-
-# Validate External ID configuration to prevent login redirect loops
-if [ -z "$EXTERNAL_ID_ISSUER" ] || [ "$EXTERNAL_ID_ISSUER" = "null" ]; then
-    echo -e "${RED}✗ .external-id-credentials is missing EXTERNAL_ID_ISSUER${NC}"
-    echo "  External ID issuer is required for reliable production auth behavior."
-    exit 1
-fi
-
-if [ -n "$EXTERNAL_ID_ISSUER" ]; then
-    ISSUER_TENANT_ID=$(echo "$EXTERNAL_ID_ISSUER" | sed -nE 's#^.*/([0-9a-fA-F-]{36})/v2\.0/?$#\1#p')
-    if [ -n "$ISSUER_TENANT_ID" ]; then
-        if [ -z "$TENANT_ID" ] || [ "$TENANT_ID" = "organizations" ]; then
-            TENANT_ID="$ISSUER_TENANT_ID"
-        elif [ "$TENANT_ID" != "$ISSUER_TENANT_ID" ]; then
-            echo -e "${RED}✗ Invalid auth config: TENANT_ID does not match EXTERNAL_ID_ISSUER${NC}"
-            echo "  TENANT_ID:           $TENANT_ID"
-            echo "  Issuer tenant ID:    $ISSUER_TENANT_ID"
-            echo "  EXTERNAL_ID_ISSUER:  $EXTERNAL_ID_ISSUER"
-            echo "  Fix .external-id-credentials before deploying."
-            exit 1
-        fi
-    fi
-fi
-
-if [ -z "$AAD_CLIENT_ID" ] || [ "$AAD_CLIENT_ID" = "null" ]; then
-    echo -e "${RED}✗ .external-id-credentials is missing AAD_CLIENT_ID${NC}"
-    exit 1
-fi
-
-if [ -z "$TENANT_ID" ] || [ "$TENANT_ID" = "null" ]; then
-    echo -e "${RED}✗ .external-id-credentials is missing TENANT_ID${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Loaded External ID credentials${NC}"
-echo "  Client ID: $AAD_CLIENT_ID"
-
-if [ -z "$AAD_CLIENT_SECRET" ]; then
-    echo -e "${RED}✗ .external-id-credentials is missing AAD_CLIENT_SECRET${NC}"
-    echo "  Login can fail or loop without a valid secret."
-    exit 1
-fi
-
-echo -e "${GREEN}✓ External ID authentication configured${NC}"
-echo "  Tenant ID: $TENANT_ID"
-echo ""
+# Step 0.5: OTP Email Configuration (optional)
+# OTP credentials are loaded by load_otp_email_credentials() function above
+# This step is now handled earlier in the script
 
 # Load optional OTP email credentials from local (gitignored) file or environment variables
 load_otp_email_credentials
@@ -645,13 +557,6 @@ if [ "$ACTIVE_ACCOUNT_TENANT" != "$ACTIVE_TOKEN_TENANT" ]; then
 fi
 
 echo -e "${GREEN}✓ Azure tenant context valid: $ACTIVE_ACCOUNT_TENANT${NC}"
-
-if [ -n "$TENANT_ID" ] && [ "$TENANT_ID" != "$ACTIVE_ACCOUNT_TENANT" ]; then
-    echo -e "${YELLOW}⚠ External ID tenant differs from Azure resource tenant${NC}"
-    echo "  External ID TENANT_ID: $TENANT_ID"
-    echo "  Azure resource tenant: $ACTIVE_ACCOUNT_TENANT"
-    echo "  This is valid for cross-tenant auth setups, but Azure CLI must stay on resource tenant."
-fi
 echo ""
 
 # Step 2: Create resource group
@@ -1123,7 +1028,22 @@ cat > local.settings.json << EOF
     \"AZURE_AI_AGENT_NAME\": \"$AZURE_AI_AGENT_NAME\",
         \"AZURE_AI_AGENT_VERSION\": \"$AZURE_AI_AGENT_VERSION\"," || echo "")$([ -n "$AZURE_AI_POSITION_AGENT_NAME" ] && [ -n "$AZURE_AI_POSITION_AGENT_VERSION" ] && echo "
         \"AZURE_AI_POSITION_AGENT_NAME\": \"$AZURE_AI_POSITION_AGENT_NAME\",
-        \"AZURE_AI_POSITION_AGENT_VERSION\": \"$AZURE_AI_POSITION_AGENT_VERSION\"," || echo "")
+        \"AZURE_AI_POSITION_AGENT_VERSION\": \"$AZURE_AI_POSITION_AGENT_VERSION\"," || echo "")$([ -n "$JWT_SECRET" ] && echo "
+    \"JWT_SECRET\": \"$JWT_SECRET\"," || echo "")
+    "JWT_EXPIRY_HOURS": "${JWT_EXPIRY_HOURS:-24}",
+    "OTP_EXPIRY_MINUTES": "${OTP_EXPIRY_MINUTES:-5}",
+    "OTP_MAX_ATTEMPTS": "${OTP_MAX_ATTEMPTS:-3}",
+    "OTP_RATE_LIMIT_MINUTES": "${OTP_RATE_LIMIT_MINUTES:-15}",
+    "OTP_RATE_LIMIT_COUNT": "${OTP_RATE_LIMIT_COUNT:-3}",$([ -n "$OTP_SMTP_HOST" ] && echo "
+    \"OTP_SMTP_HOST\": \"$OTP_SMTP_HOST\",
+    \"OTP_SMTP_PORT\": \"$OTP_SMTP_PORT\",
+    \"OTP_SMTP_SECURE\": \"$OTP_SMTP_SECURE\",
+    \"OTP_SMTP_USERNAME\": \"$OTP_SMTP_USERNAME\",
+    \"OTP_SMTP_PASSWORD\": \"$OTP_SMTP_PASSWORD\",
+    \"OTP_FROM_EMAIL\": \"$OTP_FROM_EMAIL\",
+    \"OTP_FROM_NAME\": \"$OTP_FROM_NAME\",
+    \"OTP_EMAIL_SUBJECT\": \"$OTP_EMAIL_SUBJECT\",
+    \"OTP_APP_NAME\": \"$OTP_APP_NAME\"," || echo "")
     "Environment": "prod",
     "DEBUG": "*"
   },
@@ -1222,42 +1142,8 @@ else
     exit 1
 fi
 
-# Ensure SWA has current Azure AD app settings (prevents stale secret login loops)
-if [ -n "$AAD_CLIENT_ID" ]; then
-    # External ID / B2C custom provider requires Standard SKU on Static Web Apps
-    if [ -n "$EXTERNAL_ID_ISSUER" ]; then
-        SWA_SKU=$(az staticwebapp show --name "$STATIC_WEB_APP_NAME" --resource-group "$RESOURCE_GROUP" --query "sku.name" -o tsv 2>/dev/null || echo "")
-        if [ "$SWA_SKU" != "Standard" ]; then
-            echo -e "${RED}✗ External ID/B2C requires Static Web App Standard SKU${NC}"
-            echo "  Current SKU: ${SWA_SKU:-unknown}"
-            echo "  Static Web App: $STATIC_WEB_APP_NAME"
-            echo ""
-            echo "Upgrade and re-run deployment:"
-            echo "  az staticwebapp update --name $STATIC_WEB_APP_NAME --resource-group $RESOURCE_GROUP --sku Standard"
-            exit 1
-        fi
-    fi
-
-    echo "Configuring Static Web App Azure AD settings..."
-    SWA_AUTH_SETTINGS=(
-        "AAD_CLIENT_ID=$AAD_CLIENT_ID"
-        "TENANT_ID=$TENANT_ID"
-    )
-
-    if [ -n "$AAD_CLIENT_SECRET" ]; then
-        SWA_AUTH_SETTINGS+=("AAD_CLIENT_SECRET=$AAD_CLIENT_SECRET")
-    else
-        echo -e "${YELLOW}⚠ AAD_CLIENT_SECRET not provided; keeping existing SWA secret${NC}"
-    fi
-
-    az staticwebapp appsettings set \
-        --name "$STATIC_WEB_APP_NAME" \
-        --resource-group "$RESOURCE_GROUP" \
-        --setting-names "${SWA_AUTH_SETTINGS[@]}" \
-        --output none
-
-    echo -e "${GREEN}✓ Static Web App Azure AD settings applied${NC}"
-fi
+# Azure AD configuration removed - authentication now handled by backend OTP system
+echo "Static Web App authentication is now handled by backend OTP system"
 
 # Link Function App to Static Web App for built-in API integration
 echo "Linking Function App to Static Web App..."
@@ -1317,18 +1203,7 @@ fi
 cat > .env.production << EOF
 NEXT_PUBLIC_API_URL=$FRONTEND_API_URL
 NEXT_PUBLIC_ENVIRONMENT=production
-NEXT_PUBLIC_AAD_CLIENT_ID=$AAD_CLIENT_ID
-NEXT_PUBLIC_AAD_TENANT_ID=$TENANT_ID
-NEXT_PUBLIC_AAD_REDIRECT_URI=$STATIC_WEB_APP_URL/.auth/login/aad/callback
 EOF
-
-if [ -n "$EXTERNAL_ID_ISSUER" ]; then
-    echo "Synchronizing frontend openIdIssuer from .external-id-credentials..."
-    TMP_SWA_CONFIG=$(mktemp)
-    jq --arg issuer "$EXTERNAL_ID_ISSUER" '.auth.identityProviders.azureActiveDirectory.registration.openIdIssuer = $issuer' staticwebapp.config.json > "$TMP_SWA_CONFIG"
-    mv "$TMP_SWA_CONFIG" staticwebapp.config.json
-    echo -e "${GREEN}✓ openIdIssuer synchronized: $EXTERNAL_ID_ISSUER${NC}"
-fi
 
 # Build for production (static export)
 echo "Building frontend for static deployment..."
@@ -1569,10 +1444,8 @@ if [[ "$STATIC_WEB_APP_URL" =~ ^https:// ]]; then
         echo -e "${YELLOW}⚠ Static Web App health check returned HTTP $SWA_HEALTH${NC}"
     fi
 
-    if ! verify_external_id_login "$STATIC_WEB_APP_URL" "$TENANT_ID"; then
-        echo -e "${RED}✗ Authentication verification failed. Deployment halted.${NC}"
-        exit 1
-    fi
+    # Authentication is now handled by backend OTP system
+    echo -e "${GREEN}✓ Authentication configured (OTP system)${NC}"
 else
     echo -e "${YELLOW}⚠ Static Web App URL not available for testing${NC}"
 fi
@@ -1626,7 +1499,7 @@ cat > deployment-info.json << EOF
   "features": {
     "azureOpenAI": $([ -n "$OPENAI_ENDPOINT" ] && echo "true" || echo "false"),
     "signalR": $([ -n "$SIGNALR_CONNECTION_STRING" ] && echo "true" || echo "false"),
-    "azureAD": $([ -n "$AAD_CLIENT_ID" ] && echo "true" || echo "false")
+    "otpAuth": true
   },
   "database": {
     "tables": $TABLE_COUNT,

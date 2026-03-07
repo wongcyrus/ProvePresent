@@ -4,7 +4,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 import { checkSessionAccess } from '../utils/sessionAccess';
 export async function getAttendance(
@@ -15,16 +15,13 @@ export async function getAttendance(
 
   try {
     // Parse authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    
+    }    
     // Require Teacher role
     if (!hasRole(principal, 'Teacher')) {
       return {

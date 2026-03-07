@@ -6,7 +6,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { randomUUID } from 'crypto';
 import { broadcastQuizQuestion } from '../utils/signalrBroadcast';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 
 export async function sendQuizQuestion(
@@ -17,17 +17,14 @@ export async function sendQuizQuestion(
 
   try {
     // Parse authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       context.log('Missing authentication header');
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    context.log('User:', principal.userDetails);
+    }    context.log('User:', principal.userDetails);
     
     // Require Teacher role
     if (!hasRole(principal, 'Teacher') && !hasRole(principal, 'teacher')) {

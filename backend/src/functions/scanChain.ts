@@ -6,7 +6,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { randomUUID } from 'crypto';
 import { broadcastAttendanceUpdate, broadcastChainUpdate } from '../utils/signalrBroadcast';
 import { validateGeolocation } from '../utils/geolocation';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 
 export async function scanChain(
@@ -17,16 +17,13 @@ export async function scanChain(
 
   try {
     // Parse authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    const studentEmail = principal.userDetails || principal.userId;
+    }    const studentEmail = principal.userDetails || principal.userId;
     if (!studentEmail) {
       return {
         status: 401,

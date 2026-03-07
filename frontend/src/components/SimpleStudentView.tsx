@@ -796,7 +796,6 @@ export function SimpleStudentView({ sessionId, studentId, onLeaveSession }: Simp
               borderRadius: '8px',
               maxWidth: '100%'
             }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
                 src={qrCodeUrl} 
                 alt="Your chain QR code"

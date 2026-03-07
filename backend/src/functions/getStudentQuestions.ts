@@ -4,7 +4,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 
 export async function getStudentQuestions(
@@ -14,16 +14,13 @@ export async function getStudentQuestions(
   context.log('Processing GET /api/sessions/{sessionId}/student-questions request');
 
   try {
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header' } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    
+    }    
     if (!hasRole(principal, 'Student')) {
       return {
         status: 403,

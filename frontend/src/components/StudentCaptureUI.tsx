@@ -730,7 +730,6 @@ export function StudentCaptureUI({
         {/* Photo Preview */}
         {photo && photoPreviewUrl && (
           <div style={{ marginBottom: '1rem' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={photoPreviewUrl}
               alt="Captured photo"

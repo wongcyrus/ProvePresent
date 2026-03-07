@@ -17,6 +17,7 @@ const nextConfig = {
   async exportPathMap(defaultPathMap, { dev, dir, outDir, distDir, buildId }) {
     return {
       '/': { page: '/' },
+      '/login': { page: '/login' },
       '/teacher': { page: '/teacher' },
       '/student': { page: '/student' },
       '/dev-config': { page: '/dev-config' }

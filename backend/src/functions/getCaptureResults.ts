@@ -16,7 +16,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 import {
   GetCaptureResultsResponse,
@@ -48,10 +48,9 @@ export async function getCaptureResults(
     // Step 1: Validate teacher authentication
     // ========================================================================
     
-    const principalHeader = request.headers.get('x-ms-client-principal') || 
-                           request.headers.get('x-client-principal');
+    const principal = parseAuthFromRequest(request);
     
-    if (!principalHeader) {
+    if (!principal) {
       return {
         status: 401,
         jsonBody: {
@@ -62,10 +61,7 @@ export async function getCaptureResults(
           }
         }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    
+    }    
     // Require Teacher role
     if (!hasRole(principal, 'Teacher') && !hasRole(principal, 'teacher')) {
       return {

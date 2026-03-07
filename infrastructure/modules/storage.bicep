@@ -147,6 +147,12 @@ resource externalTeachersTable 'Microsoft.Storage/storageAccounts/tableServices/
   name: 'ExternalTeachers'
 }
 
+// OTP codes table (for email-based OTP authentication)
+resource otpCodesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-01-01' = {
+  parent: tableService
+  name: 'OtpCodes'
+}
+
 // ============================================================================
 // BLOB SERVICE
 // ============================================================================

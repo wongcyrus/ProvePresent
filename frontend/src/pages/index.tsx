@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { clearAuthCache } from '../utils/authHeaders';
+import { clearAuthCache, getAuthEndpoint } from '../utils/authHeaders';
 
 interface UserInfo {
   userId: string;
@@ -36,8 +36,7 @@ export default function Home() {
 
   useEffect(() => {
     // Check if user is authenticated
-    const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-    const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+    const authEndpoint = getAuthEndpoint();
     
     fetch(authEndpoint, {
       credentials: 'include',
@@ -70,8 +69,7 @@ export default function Home() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         setLoading(true);
-        const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-        const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+        const authEndpoint = getAuthEndpoint();
         
         fetch(authEndpoint, {
           credentials: 'include',
@@ -107,28 +105,42 @@ export default function Home() {
   }, []);
 
   const handleLogin = () => {
-    const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-    window.location.href = isLocal ? '/api/auth/mock-login' : '/.auth/login/aad';
+    window.location.href = '/login';
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
     clearAuthCache();
+    
     if (isLocal) {
-      window.location.href = '/api/auth/logout';
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      window.location.href = '/';
     } else {
-      window.location.href = '/.auth/logout?post_logout_redirect_uri=%2F';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+      await fetch(`${apiUrl}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      window.location.href = '/';
     }
   };
 
-  const handleSwitchAccount = () => {
+  const handleSwitchAccount = async () => {
     const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
     clearAuthCache();
+    
     if (isLocal) {
       window.location.href = '/dev-config';
     } else {
-      const nextLoginUrl = '/.auth/login/aad?prompt=select_account';
-      window.location.href = `/.auth/logout?post_logout_redirect_uri=${encodeURIComponent(nextLoginUrl)}`;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+      await fetch(`${apiUrl}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      window.location.href = '/login';
     }
   };
 

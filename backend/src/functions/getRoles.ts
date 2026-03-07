@@ -5,7 +5,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { getRolesFromEmail } from '../utils/auth';
+import { getRolesFromEmail, parseAuthFromRequest } from '../utils/auth';
 
 export async function getRoles(
   request: HttpRequest,
@@ -14,11 +14,11 @@ export async function getRoles(
   context.log('Processing POST /api/auth/roles request');
 
   try {
-    // Get the user principal from the header (provided by Static Web Apps)
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
+    // Get the user principal from JWT cookie or Authorization header
+    const principal = parseAuthFromRequest(request);
     
-    if (!principalHeader) {
-      context.log('No client principal header found (x-ms-client-principal or x-client-principal)');
+    if (!principal) {
+      context.log('No authentication found');
       return {
         status: 200,
         jsonBody: {
@@ -27,9 +27,7 @@ export async function getRoles(
       };
     }
 
-    // Decode the principal
-    const principal = JSON.parse(Buffer.from(principalHeader, 'base64').toString('utf-8'));
-    const email = principal.userDetails || '';
+    const email = principal.userDetails || principal.userId || '';
     
     context.log('User email:', email);
     

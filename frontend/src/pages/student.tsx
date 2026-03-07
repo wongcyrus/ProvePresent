@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { getAuthHeaders } from '../utils/authHeaders';
+import { getAuthHeaders, getAuthEndpoint } from '../utils/authHeaders';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import { SimpleStudentView } from '../components/SimpleStudentView';
@@ -117,8 +117,8 @@ export default function StudentPage() {
   useEffect(() => {
     if (!mounted) return; // Don't run on server-side
     
-    const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-    const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+    // Use getAuthEndpoint helper
+    const authEndpoint = getAuthEndpoint();
     
     fetch(authEndpoint, {
       credentials: 'include',
@@ -155,8 +155,7 @@ export default function StudentPage() {
             }
           }
         } else {
-          const loginUrl = isLocal ? '/dev-config' : '/.auth/login/aad';
-          router.push(loginUrl);
+          router.push('/login');
         }
         setLoading(false);
       })

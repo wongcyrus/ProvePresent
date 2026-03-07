@@ -4,7 +4,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRoleAsync, getUserId, isValidTeacherEmail } from '../utils/auth';
+import { parseAuthFromRequest, hasRoleAsync, getUserId, isValidTeacherEmail } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 
 interface ShareSessionRequest {
@@ -27,16 +27,13 @@ export async function shareSession(
     }
 
     // Parse authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    const userId = getUserId(principal);
+    }    const userId = getUserId(principal);
 
     // Require Teacher role
     if (!await hasRoleAsync(principal, 'Teacher') && !await hasRoleAsync(principal, 'teacher')) {

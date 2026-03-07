@@ -16,7 +16,7 @@
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import * as df from 'durable-functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import {
   NotifyUploadRequest,
   NotifyUploadResponse,
@@ -57,10 +57,9 @@ export async function notifyImageUpload(
     // Step 1: Validate student authentication
     // ========================================================================
     
-    const principalHeader = request.headers.get('x-ms-client-principal') || 
-                           request.headers.get('x-client-principal');
+    const principal = parseAuthFromRequest(request);
     
-    if (!principalHeader) {
+    if (!principal) {
       return {
         status: 401,
         jsonBody: {
@@ -71,10 +70,7 @@ export async function notifyImageUpload(
           }
         }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    
+    }    
     // Require Student role
     if (!hasRole(principal, 'Student') && !hasRole(principal, 'student')) {
       return {

@@ -1,0 +1,60 @@
+# JWT and OTP Configuration
+# Copy this file to .jwt-otp-config and fill in the values
+# DO NOT commit .jwt-otp-config to git!
+# This file is automatically loaded by deploy-full-production.sh
+
+# ============================================
+# JWT Configuration (Required)
+# ============================================
+
+# Generate a secure secret with: openssl rand -hex 32
+# This is used to sign JWT tokens for authentication
+JWT_SECRET=your-secure-secret-here-at-least-32-characters-long
+
+# JWT token expiration in hours (default: 24)
+JWT_EXPIRY_HOURS=24
+
+# ============================================
+# OTP Configuration (Optional - has defaults)
+# ============================================
+
+# OTP code expiration in minutes (default: 5)
+OTP_EXPIRY_MINUTES=5
+
+# Maximum verification attempts before lockout (default: 3)
+OTP_MAX_ATTEMPTS=3
+
+# Rate limit window in minutes (default: 15)
+OTP_RATE_LIMIT_MINUTES=15
+
+# Maximum OTP requests per rate limit window (default: 3)
+OTP_RATE_LIMIT_COUNT=3
+
+# ============================================
+# Usage
+# ============================================
+#
+# 1. Copy this file:
+#    cp .jwt-otp-config.template .jwt-otp-config
+#
+# 2. Generate JWT_SECRET:
+#    JWT_SECRET=$(openssl rand -hex 32)
+#    sed -i "s/your-secure-secret-here-at-least-32-characters-long/$JWT_SECRET/" .jwt-otp-config
+#
+# 3. Deploy (configuration is automatically loaded):
+#    ./deploy-full-production.sh
+#
+# Or use the setup script:
+#    ./setup-jwt-config.sh
+#    ./deploy-full-production.sh
+#
+# ============================================
+# Security Notes
+# ============================================
+#
+# - JWT_SECRET must be at least 32 characters
+# - Never commit .jwt-otp-config to git
+# - Use different secrets for dev/staging/prod
+# - Rotate JWT_SECRET regularly (invalidates all tokens)
+# - Store production secrets in Azure Key Vault
+#

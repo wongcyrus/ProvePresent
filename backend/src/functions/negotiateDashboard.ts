@@ -3,7 +3,7 @@
  * Provides SignalR connection information for real-time dashboard updates
  */
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 
 export async function negotiateDashboard(
   request: HttpRequest,
@@ -12,8 +12,8 @@ export async function negotiateDashboard(
   context.log('SignalR dashboard negotiate called');
   
   try {
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: {
@@ -26,7 +26,6 @@ export async function negotiateDashboard(
       };
     }
 
-    const principal = parseUserPrincipal(principalHeader);
     if (!hasRole(principal, 'teacher')) {
       return {
         status: 403,

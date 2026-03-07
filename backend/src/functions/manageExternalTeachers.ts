@@ -12,7 +12,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRoleAsync, getUserId, clearExternalTeachersCache } from '../utils/auth';
+import { parseAuthFromRequest, hasRoleAsync, getUserId, clearExternalTeachersCache } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 
 interface AddExternalTeacherRequest {
@@ -32,16 +32,13 @@ export async function listExternalTeachers(
 
   try {
     // Parse authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
     }
-
-    const principal = parseUserPrincipal(principalHeader);
-
     // Require Teacher role (only teachers can view external teachers list)
     if (!await hasRoleAsync(principal, 'teacher')) {
       return {
@@ -96,16 +93,13 @@ export async function addExternalTeacher(
 
   try {
     // Parse authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    const adminId = getUserId(principal);
+    }    const adminId = getUserId(principal);
 
     // Require Teacher role (only existing teachers can add external teachers)
     if (!await hasRoleAsync(principal, 'teacher')) {
@@ -210,16 +204,13 @@ export async function removeExternalTeacher(
     }
 
     // Parse authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    const adminId = getUserId(principal);
+    }    const adminId = getUserId(principal);
 
     // Require Teacher role
     if (!await hasRoleAsync(principal, 'teacher')) {

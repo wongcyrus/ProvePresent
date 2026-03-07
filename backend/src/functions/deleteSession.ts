@@ -5,7 +5,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId, getRolesFromEmail } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId, getRolesFromEmail } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 // Assign roles based on email domain
 interface DeletionSummary {
@@ -42,16 +42,13 @@ export async function deleteSession(
     }
 
     // Extract and validate authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Not authenticated', timestamp: Date.now() } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    const userId = getUserId(principal);
+    }    const userId = getUserId(principal);
     
     // Extract email to determine role (userDetails contains the email)
     const teacherEmail = principal.userDetails || '';

@@ -5,7 +5,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 import { broadcastAttendanceUpdate } from '../utils/signalrBroadcast';
 
@@ -16,16 +16,13 @@ export async function studentOnline(
   context.log('Processing POST /api/sessions/{sessionId}/student-online request');
 
   try {
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: { code: 'UNAUTHORIZED', message: 'Missing authentication header', timestamp: Date.now() } }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    if (!hasRole(principal, 'student')) {
+    }    if (!hasRole(principal, 'student')) {
       return {
         status: 403,
         jsonBody: { error: { code: 'FORBIDDEN', message: 'Student role required', timestamp: Date.now() } }

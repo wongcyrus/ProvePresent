@@ -39,7 +39,7 @@ Backend:      Azure Functions v4 (Node.js 22)
 Database:     Azure Table Storage (16 tables)
 Real-time:    Azure SignalR Service
 AI:           Azure OpenAI + Foundry Agent Service
-Auth:         Azure AD External ID
+Auth:         Email OTP (Self-managed JWT)
 Hosting:      Azure Static Web Apps
 ```
 
@@ -49,18 +49,15 @@ Hosting:      Azure Static Web Apps
 
 ### Deploy to Azure
 
-**⚠️ Prerequisites**: Azure AD External ID tenant must be configured manually first.
-
-1. **Set up Azure AD External ID** (manual - Azure Portal)
-   - Create External ID tenant
-   - Create app registration
-   - Configure user flows
-   - See **[Azure AD Config Guide](docs/deployment/AZURE_AD_CONFIG.md)**
-
-2. **Create credentials file**
+1. **Setup JWT configuration**
    ```bash
-   cp .external-id-credentials.template .external-id-credentials
-   # Edit with your Azure AD app credentials
+   ./setup-jwt-config.sh
+   ```
+
+2. **Verify SMTP credentials**
+   ```bash
+   # Ensure .otp-email-credentials exists with valid SMTP settings
+   cat .otp-email-credentials
    ```
 
 3. **Deploy**
@@ -68,11 +65,7 @@ Hosting:      Azure Static Web Apps
    ./deploy-full-production.sh
    ```
 
-4. **Post-deployment** (manual - Azure Portal)
-   - Add Static Web App URL to app registration redirect URIs
-   - Configure custom OTP email extension (optional)
-
-See **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** for complete instructions.
+See **[Quick Start Guide](QUICK_START.md)** for complete instructions.
 
 ### Local Development
 

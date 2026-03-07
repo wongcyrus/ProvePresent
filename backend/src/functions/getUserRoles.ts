@@ -4,7 +4,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { getRolesFromEmail } from '../utils/auth';
+import { getRolesFromEmail, parseAuthFromRequest } from '../utils/auth';
 
 export async function getUserRoles(
   request: HttpRequest,
@@ -13,20 +13,17 @@ export async function getUserRoles(
   context.log('Processing GET /api/auth/me request');
 
   try {
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
+    const principal = parseAuthFromRequest(request);
     
-    if (!principalHeader) {
+    if (!principal) {
       return {
         status: 401,
         jsonBody: { error: 'Not authenticated' }
       };
     }
 
-    // Decode the principal
-    const principal = JSON.parse(Buffer.from(principalHeader, 'base64').toString('utf-8'));
-    
     // Compute roles from email domain
-    const email = principal.userDetails || '';
+    const email = principal.userDetails || principal.userId || '';
     const roles = getRolesFromEmail(email);
     
     return {

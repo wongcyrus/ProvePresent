@@ -1,7 +1,7 @@
 {
-  "name": "@prove-present/backend",
+  "name": "@qr-attendance/backend",
   "version": "1.0.0",
-  "description": "Azure Functions backend for ProvePresent System",
+  "description": "Azure Functions backend for QR Chain Attendance System",
   "main": "dist/src/functions/*.js",
   "scripts": {
     "build": "tsc",
@@ -10,8 +10,6 @@
     "test": "jest",
     "test:unit": "jest --testPathPattern=\\.test\\.ts$",
     "test:property": "jest --testPathPattern=\\.property\\.test\\.ts$",
-    "test:smtp": "npm run build && node dist/src/scripts/testOtpSmtp.js",
-    "test:smtp:send": "npm run build && node dist/src/scripts/testOtpSmtp.js --send",
     "lint": "eslint src --ext .ts",
     "prestart": "npm run build",
     "predeploy": "npm run build"

@@ -46,14 +46,10 @@ ProvePresent uses comprehensive bash scripts for automated deployment. These scr
 **Execution Flow**:
 
 ```
-Step 0: Load credentials
-    └── Source .external-id-credentials
-    └── Validate AAD_CLIENT_ID, AAD_CLIENT_SECRET, TENANT_ID
-    └── Validate EXTERNAL_ID_ISSUER
-
-Step 0.5: Validate Azure AD Configuration
-    └── Check EXTERNAL_ID_ISSUER format
-    └── Verify tenant ID consistency
+Step 0: Load JWT configuration
+    └── Load .jwt-otp-config (JWT_SECRET, OTP settings)
+    └── Load .otp-email-credentials (SMTP settings)
+    └── Set defaults for optional values
 
 Step 1: Check prerequisites
     └── Azure CLI, func, npm, curl, jq
@@ -62,7 +58,6 @@ Step 1: Check prerequisites
 
 Step 1.5: Validate Azure tenant context
     └── Verify account tenant matches token tenant
-    └── Detect cross-tenant auth setups
 
 Step 2: Create resource group
     └── rg-qr-attendance-prod in eastus2
@@ -88,7 +83,7 @@ Step 4.5: Configure SignalR CORS
 
 Step 5: Deploy backend functions
     └── npm install && npm run build
-    └── Create local.settings.json
+    └── Create local.settings.json with JWT/OTP settings
     └── func azure functionapp publish
 
 Step 6: Verify database tables
@@ -96,8 +91,7 @@ Step 6: Verify database tables
 
 Step 7: Build frontend
     └── Resolve Static Web App target
-    └── Upgrade to Standard SKU if needed
-    └── Configure Azure AD settings
+    └── Create .env.production (API URL only)
     └── Link Function App backend
     └── Create .env.production
     └── npm run build
@@ -179,23 +173,26 @@ Step 10: Save deployment info
 
 ## Credential Files
 
-### .external-id-credentials
+### .jwt-otp-config
 
-**Purpose**: Azure AD / External ID authentication credentials.
+**Purpose**: JWT and OTP authentication configuration (automatically loaded by deployment script).
 
 **Required Variables**:
 ```bash
-AAD_CLIENT_ID=<app-registration-client-id>
-AAD_CLIENT_SECRET=<client-secret>
-TENANT_ID=<azure-ad-tenant-id>
-EXTERNAL_ID_ISSUER=https://<tenant>.ciamlogin.com/<tenant-id>/v2.0
+JWT_SECRET=<secure-random-string-64-characters>
+JWT_EXPIRY_HOURS=24
+OTP_EXPIRY_MINUTES=5
+OTP_MAX_ATTEMPTS=3
+OTP_RATE_LIMIT_MINUTES=15
+OTP_RATE_LIMIT_COUNT=3
 ```
 
-**Security**: Git-ignored, never committed.
+**Security**: Git-ignored, never committed.  
+**Setup**: Run `./setup-jwt-config.sh` to generate automatically.
 
 ### .otp-email-credentials
 
-**Purpose**: SMTP settings for OTP email delivery.
+**Purpose**: SMTP settings for OTP email delivery (automatically loaded by deployment script).
 
 **Variables**:
 ```bash
@@ -248,12 +245,11 @@ npx tsx create-agents.ts <resource-group> <openai-name> <project-name>
 
 | Feature | Free SKU | Standard SKU |
 |---------|----------|--------------|
-| Custom auth providers | ❌ | ✅ |
 | Linked backends | ❌ | ✅ |
-| External ID / B2C | ❌ | ✅ |
 | Custom domains | ✅ | ✅ |
+| Enterprise-grade CDN | ❌ | ✅ |
 
-**Note**: Scripts automatically upgrade to Standard when External ID is configured.
+**Note**: Scripts use Standard SKU for linked backend support.
 
 ### Backend Linking
 
@@ -269,19 +265,7 @@ az staticwebapp backends link \
 **Benefits**:
 - No CORS configuration needed
 - `/api/*` routes proxied automatically
-- Authentication headers forwarded
-
-### Auth Settings
-
-```bash
-az staticwebapp appsettings set \
-  --name <swa-name> \
-  --resource-group <rg> \
-  --setting-names \
-    "AAD_CLIENT_ID=<client-id>" \
-    "AAD_CLIENT_SECRET=<secret>" \
-    "TENANT_ID=<tenant-id>"
-```
+- Authentication handled by backend
 
 ---
 

@@ -4,6 +4,7 @@
  */
 
 import { TableClient } from '@azure/data-tables';
+import { verifyToken, jwtToClientPrincipal } from './jwt';
 
 // Cache for external teachers to avoid repeated DB lookups
 let externalTeachersCache: Set<string> | null = null;
@@ -85,18 +86,79 @@ export function clearExternalTeachersCache(): void {
 }
 
 /**
- * Parse the base64-encoded user principal header
- * @param header - The x-ms-client-principal header value
- * @returns Parsed principal object
- * @throws Error if header is invalid
+ * Parse authentication from request headers
+ * Supports JWT tokens from cookie or Authorization header
+ * @param headers - Request headers object
+ * @returns User principal object or null if not authenticated
  */
-export function parseUserPrincipal(header: string): any {
-  try {
-    const decoded = Buffer.from(header, 'base64').toString('utf-8');
-    return JSON.parse(decoded);
-  } catch {
-    throw new Error('Invalid authentication header');
+export function parseAuthFromHeaders(headers: any): any | null {
+  // Try JWT from cookie first (preferred)
+  const cookieHeader = headers.get?.('cookie') || headers.cookie;
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').map((c: string) => c.trim());
+    const authCookie = cookies.find((c: string) => c.startsWith('auth-token='));
+    if (authCookie) {
+      const token = authCookie.substring('auth-token='.length);
+      const payload = verifyToken(token);
+      if (payload) {
+        return jwtToClientPrincipal(payload);
+      }
+    }
   }
+
+  // Try JWT from Authorization header
+  const authHeader = headers.get?.('authorization') || headers.authorization;
+  if (authHeader) {
+    const token = authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : authHeader;
+    const payload = verifyToken(token);
+    if (payload) {
+      return jwtToClientPrincipal(payload);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse authentication from request
+ * Convenience wrapper that extracts headers from request object
+ * @param request - HTTP request object
+ * @returns User principal object or null if not authenticated
+ */
+export function parseAuthFromRequest(request: any): any | null {
+  return parseAuthFromHeaders(request.headers);
+}
+
+/**
+ * @deprecated Use parseAuthFromHeaders or parseAuthFromRequest instead
+ * Legacy function for backward compatibility during migration
+ * Parses JWT token and returns principal
+ */
+export function parseUserPrincipal(headerOrRequest: string | any): any {
+  // If it's a request object, extract from headers
+  if (typeof headerOrRequest === 'object' && headerOrRequest.headers) {
+    const principal = parseAuthFromHeaders(headerOrRequest.headers);
+    if (!principal) {
+      throw new Error('No authentication found');
+    }
+    return principal;
+  }
+  
+  // If it's a string, try to parse as JWT token directly (for migration compatibility)
+  if (typeof headerOrRequest === 'string') {
+    try {
+      const payload = verifyToken(headerOrRequest);
+      if (payload) {
+        return jwtToClientPrincipal(payload);
+      }
+    } catch (error) {
+      // Not a valid JWT, might be old Azure AD format
+    }
+  }
+  
+  throw new Error('parseUserPrincipal: Invalid input. Use parseAuthFromRequest or parseAuthFromHeaders instead.');
 }
 
 /**

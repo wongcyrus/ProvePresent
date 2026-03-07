@@ -68,14 +68,6 @@ echo "Resource Group: $RESOURCE_GROUP"
 echo "Static Web App (preferred): $STATIC_WEB_APP_NAME"
 echo ""
 
-# Load credentials
-if [ -f ".external-id-credentials" ]; then
-    source ./.external-id-credentials
-else
-    echo -e "${RED}✗ Missing .external-id-credentials${NC}"
-    exit 1
-fi
-
 # Get Static Web App details
 echo -e "${BLUE}Step 1: Getting Static Web App details...${NC}"
 
@@ -133,18 +125,7 @@ npm install
 cat > .env.local << EOF
 NEXT_PUBLIC_API_URL=$FRONTEND_API_URL
 NEXT_PUBLIC_ENVIRONMENT=$ENVIRONMENT
-NEXT_PUBLIC_AAD_CLIENT_ID=$AAD_CLIENT_ID
-NEXT_PUBLIC_AAD_TENANT_ID=$TENANT_ID
-NEXT_PUBLIC_AAD_REDIRECT_URI=$STATIC_WEB_APP_URL/.auth/login/aad/callback
 EOF
-
-# Sync openIdIssuer if using External ID
-if [ -n "$EXTERNAL_ID_ISSUER" ]; then
-    echo "Syncing openIdIssuer..."
-    TMP_SWA_CONFIG=$(mktemp)
-    jq --arg issuer "$EXTERNAL_ID_ISSUER" '.auth.identityProviders.azureActiveDirectory.registration.openIdIssuer = $issuer' staticwebapp.config.json > "$TMP_SWA_CONFIG"
-    mv "$TMP_SWA_CONFIG" staticwebapp.config.json
-fi
 
 # Build
 echo "Building..."

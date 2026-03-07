@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { getAuthHeaders } from '../utils/authHeaders';
+import { getAuthHeaders, getAuthEndpoint } from '../utils/authHeaders';
 import { useRouter } from 'next/router';
 import { SessionCreationForm } from '../components/SessionCreationForm';
 import { TeacherDashboard } from '../components/TeacherDashboardWithTabs';
@@ -50,10 +50,10 @@ export default function TeacherPage() {
 
   // Helper function to get the correct base URL for QR codes
   const getQRBaseUrl = () => {
-    const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
+    // Use getAuthEndpoint helper
     const currentOrigin = window.location.origin;
     
-    console.log('getQRBaseUrl debug:', { isLocal, currentOrigin });
+    console.log('getQRBaseUrl debug:', { currentOrigin });
     
     // Always use the current origin - it will be the network IP if accessed via network IP
     console.log('Using current origin:', currentOrigin);
@@ -80,8 +80,8 @@ export default function TeacherPage() {
   const [selectedSessionForEdit, setSelectedSessionForEdit] = useState<Session | null>(null);
 
   useEffect(() => {
-    const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-    const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+    // Use getAuthEndpoint helper
+    const authEndpoint = getAuthEndpoint();
     
     fetch(authEndpoint, {
       credentials: 'include',
@@ -115,8 +115,7 @@ export default function TeacherPage() {
             }
           }
         } else {
-          const loginUrl = isLocal ? '/dev-config' : '/.auth/login/aad';
-          router.push(loginUrl);
+          router.push('/login');
         }
         setLoading(false);
       })
@@ -135,11 +134,11 @@ export default function TeacherPage() {
 
   const loadSessions = async () => {
     try {
-      const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
+      // Use getAuthEndpoint helper
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
       
       // Get fresh auth info
-      const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+      const authEndpoint = getAuthEndpoint();
       const authResponse = await fetch(authEndpoint, { credentials: 'include' });
       const authData = await authResponse.json();
       
@@ -199,8 +198,8 @@ export default function TeacherPage() {
     const refreshQR = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-        const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-        const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+        // Use getAuthEndpoint helper
+        const authEndpoint = getAuthEndpoint();
         const authResponse = await fetch(authEndpoint, { credentials: 'include' });
         const authData = await authResponse.json();
         
@@ -263,8 +262,8 @@ export default function TeacherPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
       
       // Get authentication
-      const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-      const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+      // Use getAuthEndpoint helper
+      const authEndpoint = getAuthEndpoint();
       const authResponse = await fetch(authEndpoint, { credentials: 'include' });
       const authData = await authResponse.json();
       
@@ -334,8 +333,8 @@ export default function TeacherPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
       
       // Get authentication
-      const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-      const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+      // Use getAuthEndpoint helper
+      const authEndpoint = getAuthEndpoint();
       const authResponse = await fetch(authEndpoint, { credentials: 'include' });
       const authData = await authResponse.json();
       
@@ -427,8 +426,8 @@ export default function TeacherPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
       
       // Get authentication
-      const isLocal = process.env.NEXT_PUBLIC_ENVIRONMENT === 'local';
-      const authEndpoint = isLocal ? '/api/auth/me' : '/.auth/me';
+      // Use getAuthEndpoint helper
+      const authEndpoint = getAuthEndpoint();
       const authResponse = await fetch(authEndpoint, { credentials: 'include' });
       const authData = await authResponse.json();
       

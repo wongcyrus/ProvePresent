@@ -9,7 +9,7 @@
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, getUserId } from '../utils/auth';
 
 export async function studentNegotiate(
   request: HttpRequest,
@@ -57,20 +57,16 @@ export async function studentNegotiate(
     }
 
     // Get student ID from authentication
-    const principalHeader = request.headers.get('x-ms-client-principal') || 
-                           request.headers.get('x-client-principal');
+    const principal = parseAuthFromRequest(request);
     
-    if (!principalHeader) {
+    if (!principal) {
       return {
         status: 401,
         jsonBody: {
           error: 'Missing authentication'
         }
       };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    const studentId = getUserId(principal);
+    }    const studentId = getUserId(principal);
 
     // Generate hub name (same as dashboard)
     const hubName = `dashboard${sessionId.replace(/-/g, '')}`;

@@ -11,8 +11,8 @@
  * - Offline fallback page
  */
 
-const CACHE_NAME = 'qr-attendance-v3';
-const RUNTIME_CACHE = 'qr-attendance-runtime-v3';
+const CACHE_NAME = 'qr-attendance-v4';
+const RUNTIME_CACHE = 'qr-attendance-runtime-v4';
 
 // Core assets to cache on install
 const STATIC_ASSETS = [
@@ -76,6 +76,24 @@ self.addEventListener('fetch', (event) => {
 
   // Skip Chrome extensions and other non-http(s) requests
   if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // Let browser handle manual-redirect requests natively
+  // (returning redirected responses from SW can trigger network errors)
+  if (request.redirect === 'manual') {
+    return;
+  }
+
+  // Let browser handle auth and login navigations directly
+  // to avoid redirect-mode incompatibilities during sign-in flows
+  if (
+    request.mode === 'navigate' &&
+    (url.pathname === '/login' ||
+      url.pathname === '/login/' ||
+      url.pathname.startsWith('/.auth/') ||
+      url.pathname.startsWith('/api/auth/'))
+  ) {
     return;
   }
 

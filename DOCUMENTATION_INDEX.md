@@ -12,6 +12,16 @@
 | [GETTING_STARTED.md](GETTING_STARTED.md) | Setup guide |
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | Current status |
 | [SECURITY.md](SECURITY.md) | Security guidelines |
+| [AGENT_SERVICE_GUIDE.md](AGENT_SERVICE_GUIDE.md) | Azure AI Foundry agents |
+
+---
+
+## Authentication
+
+| Document | Description |
+|----------|-------------|
+| [JWT_OTP_CONFIGURATION_GUIDE.md](docs/authentication/JWT_OTP_CONFIGURATION_GUIDE.md) | JWT and OTP configuration |
+| [JWT_OTP_SETUP_EXAMPLE.md](docs/authentication/JWT_OTP_SETUP_EXAMPLE.md) | Complete setup examples |
 
 ---
 
@@ -33,7 +43,8 @@
 | Document | Description |
 |----------|-------------|
 | [DEPLOYMENT_GUIDE.md](docs/deployment/DEPLOYMENT_GUIDE.md) | Full deployment instructions |
-| [AZURE_AD_CONFIG.md](docs/deployment/AZURE_AD_CONFIG.md) | Azure AD External ID setup |
+| [BACKEND_AUTH_MIGRATION.md](docs/deployment/BACKEND_AUTH_MIGRATION.md) | JWT authentication migration |
+| [DEV_SCRIPT_MIGRATION_COMPLETE.md](docs/deployment/DEV_SCRIPT_MIGRATION_COMPLETE.md) | Development script migration |
 | [infrastructure/README.md](infrastructure/README.md) | Infrastructure overview |
 
 ---
@@ -51,7 +62,6 @@
 
 | Document | Description |
 |----------|-------------|
-| [AGENT_SERVICE_GUIDE.md](AGENT_SERVICE_GUIDE.md) | Azure AI Foundry agents |
 | [BACKEND_ARCHITECTURE.md](docs/BACKEND_ARCHITECTURE.md) | Backend details |
 | [FRONTEND_ARCHITECTURE.md](docs/FRONTEND_ARCHITECTURE.md) | Frontend details |
 | [MONITORING.md](docs/MONITORING.md) | Monitoring setup |
@@ -59,4 +69,12 @@
 
 ---
 
-**Last Updated**: March 6, 2026
+## Archived Documentation
+
+Outdated migration and temporary documentation has been archived to `.archive/`:
+- `.archive/outdated-docs-*/` - Azure AD removal and OTP migration docs
+- `.archive/root-docs-*/` - Temporary cleanup summaries
+
+---
+
+**Last Updated**: March 7, 2026

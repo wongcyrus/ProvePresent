@@ -26,44 +26,21 @@
       }
     },
     {
-      "route": "/teacher",
+      "route": "/login",
       "allowedRoles": [
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/student",
-      "allowedRoles": [
-        "anonymous",
-        "authenticated",
-        "student"
+        "anonymous"
       ]
     },
     {
       "route": "/dev-config",
       "allowedRoles": [
-        "anonymous",
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/api/auth/roles",
-      "allowedRoles": [
-        "anonymous",
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/api/*",
-      "allowedRoles": [
-        "authenticated"
+        "anonymous"
       ]
     },
     {
       "route": "/*",
       "allowedRoles": [
-        "anonymous",
-        "authenticated"
+        "anonymous"
       ]
     }
   ],
@@ -88,10 +65,6 @@
     ]
   },
   "responseOverrides": {
-    "401": {
-      "redirect": "/.auth/login/aad",
-      "statusCode": 302
-    },
     "403": {
       "statusCode": 403,
       "rewrite": "/403.html"
@@ -101,19 +74,8 @@
       "rewrite": "/404.html"
     }
   },
-  "auth": {
-    "identityProviders": {
-      "azureActiveDirectory": {
-        "registration": {
-          "openIdIssuer": "https://8d7e7129-267c-4ef8-b977-e744f7018b45.ciamlogin.com/8d7e7129-267c-4ef8-b977-e744f7018b45/v2.0",
-          "clientIdSettingName": "AAD_CLIENT_ID",
-          "clientSecretSettingName": "AAD_CLIENT_SECRET"
-        }
-      }
-    }
-  },
   "globalHeaders": {
-    "content-security-policy": "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: https://*.blob.core.windows.net; font-src 'self' data:; connect-src 'self' https://*.azurewebsites.net https://*.signalr.net wss://*.service.signalr.net https://*.table.core.windows.net https://*.blob.core.windows.net https://login.microsoftonline.com;",
+    "content-security-policy": "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: https://*.blob.core.windows.net; font-src 'self' data:; connect-src 'self' https://*.azurewebsites.net https://*.signalr.net wss://*.service.signalr.net https://*.table.core.windows.net https://*.blob.core.windows.net;",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
@@ -122,7 +84,7 @@
     "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
     "Pragma": "no-cache",
     "Expires": "0",
-    "X-CSP-Updated": "2026-02-27T08:10:00Z"
+    "X-CSP-Updated": "2026-03-07T00:00:00Z"
   },
   "mimeTypes": {
     ".json": "application/json",
@@ -142,5 +104,16 @@
   "platform": {
     "apiRuntime": "node:20"
   },
-  "trailingSlash": "auto"
+  "trailingSlash": "auto",
+  "auth": {
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://8d7e7129-267c-4ef8-b977-e744f7018b45.ciamlogin.com/8d7e7129-267c-4ef8-b977-e744f7018b45/v2.0",
+          "clientIdSettingName": "AAD_CLIENT_ID",
+          "clientSecretSettingName": "AAD_CLIENT_SECRET"
+        }
+      }
+    }
+  }
 }

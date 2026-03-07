@@ -2,17 +2,14 @@
  * Stop Early Leave - REFACTORED (Simplified)
  */
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { parseUserPrincipal, hasRole, getUserId } from '../utils/auth';
+import { parseAuthFromRequest, hasRole, getUserId } from '../utils/auth';
 import { getTableClient, TableNames } from '../utils/database';
 export async function stopEarlyLeave(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
-    const principalHeader = request.headers.get('x-ms-client-principal') || request.headers.get('x-client-principal');
-    if (!principalHeader) {
+    const principal = parseAuthFromRequest(request);
+    if (!principal) {
       return { status: 401, jsonBody: { error: 'Unauthorized' } };
-    }
-
-    const principal = parseUserPrincipal(principalHeader);
-    if (!hasRole(principal, 'Teacher')) {
+    }    if (!hasRole(principal, 'Teacher')) {
       return { status: 403, jsonBody: { error: 'Forbidden' } };
     }
 
