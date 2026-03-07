@@ -8,6 +8,58 @@ import { AgentsClient, isOutputOfType } from '@azure/ai-agents';
 import { AIProjectClient } from '@azure/ai-projects';
 import { DefaultAzureCredential } from '@azure/identity';
 
+// OpenTelemetry imports for tracing
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { AzureMonitorTraceExporter } from '@azure/monitor-opentelemetry-exporter';
+import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { Resource } from '@opentelemetry/resources';
+import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+
+// Initialize tracing once
+let tracingInitialized = false;
+
+async function initializeTracing(projectClient: AIProjectClient) {
+  if (tracingInitialized) return;
+  
+  try {
+    // Get Application Insights connection string from project (async)
+    const connectionString = await projectClient.telemetry.getApplicationInsightsConnectionString();
+    
+    if (!connectionString) {
+      console.warn('[AgentService] No Application Insights connection string found - tracing disabled');
+      console.warn('[AgentService] Connect Application Insights in Foundry portal: Agents → Traces → Connect');
+      return;
+    }
+
+    // Create tracer provider with service name
+    const resource = new Resource({
+      [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'qr-attendance-agent-service'
+    });
+
+    const provider = new NodeTracerProvider({ resource });
+    
+    // Add Azure Monitor exporter (type assertion needed due to version mismatch)
+    const exporter = new AzureMonitorTraceExporter({ connectionString });
+    provider.addSpanProcessor(new BatchSpanProcessor(exporter as any));
+    
+    // Register the provider
+    provider.register();
+    
+    // Register instrumentations (empty for now, can add more later)
+    registerInstrumentations({
+      instrumentations: [],
+    });
+    
+    tracingInitialized = true;
+    console.log('[AgentService] Tracing initialized successfully');
+    console.log('[AgentService] Service name:', resource.attributes[ATTR_SERVICE_NAME]);
+  } catch (error) {
+    console.error('[AgentService] Failed to initialize tracing:', error);
+    console.error('[AgentService] Tracing will be disabled');
+  }
+}
+
 interface AgentResponse {
   content: string;
   usage?: {
@@ -35,6 +87,11 @@ export class AgentServiceClient {
     const credential = new DefaultAzureCredential();
     this.client = new AgentsClient(this.projectEndpoint, credential);
     this.projectClient = new AIProjectClient(this.projectEndpoint, credential);
+    
+    // Initialize tracing asynchronously (don't await to avoid blocking constructor)
+    initializeTracing(this.projectClient).catch(err => {
+      console.error('[AgentService] Tracing initialization failed:', err);
+    });
   }
 
   /**
@@ -46,7 +103,7 @@ export class AgentServiceClient {
     model?: string;
     temperature?: number;
   }): Promise<string> {
-    const model = config.model || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1';
+    const model = config.model || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4';
 
     const agent = await this.client.createAgent(model, {
       name: config.name,
@@ -220,130 +277,63 @@ export class AgentServiceClient {
     userMessage: string;
     model?: string;
   }): Promise<AgentResponse> {
-    const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2025-04-01-preview';
-
     console.log('[AgentService] Starting runSingleInteraction');
     console.log('[AgentService] Project endpoint:', this.projectEndpoint);
-    console.log('[AgentService] API version:', apiVersion);
 
-    const openAIClient = await this.projectClient.getAzureOpenAIClient({
-      apiVersion
-    });
-    console.log('[AgentService] OpenAI client created');
-
-    const agentReferenceName = config.agentName || process.env.AZURE_AI_AGENT_NAME;
-    const agentReferenceVersion = process.env.AZURE_AI_AGENT_VERSION;
-
-    console.log('[AgentService] Agent name:', agentReferenceName);
-    console.log('[AgentService] Agent version:', agentReferenceVersion);
+    const agentName = config.agentName || process.env.AZURE_AI_AGENT_NAME || 'QuizQuestionGenerator';
+    
+    console.log('[AgentService] Agent name:', agentName);
     console.log('[AgentService] User message length:', config.userMessage?.length || 0);
 
-    if (!agentReferenceName || !agentReferenceVersion) {
-      throw new Error('AZURE_AI_AGENT_NAME and AZURE_AI_AGENT_VERSION environment variables are required');
-    }
-
-    let response: any;
     try {
-      console.log('[AgentService] Calling openAIClient.responses.create with agent reference...');
+      // Get OpenAI client (NOT getAzureOpenAIClient)
+      console.log('[AgentService] Getting OpenAI client...');
+      const openAIClient = await this.projectClient.getOpenAIClient();
+      console.log('[AgentService] OpenAI client created');
+
+      // Create conversation with initial user message
+      console.log('[AgentService] Creating conversation...');
+      const conversation = await openAIClient.conversations.create({
+        items: [{ type: "message", role: "user", content: config.userMessage }]
+      });
+      console.log('[AgentService] Conversation created:', conversation.id);
+
+      // Generate response using the agent
+      console.log('[AgentService] Generating response with agent...');
       const startTime = Date.now();
       
-      response = await openAIClient.responses.create(
+      const response = await openAIClient.responses.create(
         {
-          input: [
-            {
-              role: 'user',
-              content: config.userMessage
-            }
-          ]
+          conversation: conversation.id,
         },
         {
-          body: {
-            agent: {
-              name: agentReferenceName,
-              version: agentReferenceVersion,
-              type: 'agent_reference'
-            }
-          }
+          body: { 
+            agent: { 
+              name: agentName, 
+              type: "agent_reference" 
+            } 
+          },
         }
       );
       
       const duration = Date.now() - startTime;
       console.log(`[AgentService] Agent response received in ${duration}ms`);
-      console.log('[AgentService] Response keys:', Object.keys(response || {}));
-    } catch (error: any) {
-      console.error('[AgentService] Agent call failed:', error.message);
-      console.error('[AgentService] Error details:', JSON.stringify(error, null, 2));
-      
-      const errorMessage = String(error?.message || '');
-      if (!errorMessage.includes('Missed model deployment')) {
-        throw error;
+      console.log('[AgentService] Response output_text length:', response.output_text?.length || 0);
+
+      if (!response.output_text) {
+        throw new Error('No output_text in response');
       }
 
-      console.log('[AgentService] Falling back to direct model call...');
-      const fallbackModel =
-        config.model ||
-        process.env.AZURE_OPENAI_DEPLOYMENT ||
-        'gpt-4.1';
-
-      console.log('[AgentService] Fallback model:', fallbackModel);
-      
-      response = await openAIClient.responses.create({
-        model: fallbackModel,
-        input: [
-          {
-            role: 'user',
-            content: config.userMessage
-          }
-        ]
-      });
-      console.log('[AgentService] Fallback response received');
-    }
-
-    console.log('[AgentService] Parsing response...');
-    console.log('[AgentService] output_text exists:', !!(response as any).output_text);
-    console.log('[AgentService] output array exists:', Array.isArray((response as any).output));
-
-    const outputText = (response as any).output_text;
-    if (typeof outputText === 'string' && outputText.trim().length > 0) {
-      console.log('[AgentService] Using output_text, length:', outputText.length);
       return {
-        content: outputText
+        content: response.output_text
       };
+
+    } catch (error: any) {
+      console.error('[AgentService] Agent interaction failed:', error.message);
+      console.error('[AgentService] Error code:', error.code);
+      console.error('[AgentService] Error status:', error.status);
+      throw error;
     }
-
-    const outputItems = (response as any).output;
-    if (Array.isArray(outputItems)) {
-      console.log('[AgentService] Processing output array, items:', outputItems.length);
-      const textChunks: string[] = [];
-      for (const item of outputItems) {
-        console.log('[AgentService] Output item type:', item?.type);
-        if (item?.type === 'message' && Array.isArray(item.content)) {
-          console.log('[AgentService] Message content items:', item.content.length);
-          for (const content of item.content) {
-            console.log('[AgentService] Content type:', content?.type);
-            if ((content?.type === 'output_text' || content?.type === 'text') && typeof content?.text === 'string') {
-              textChunks.push(content.text);
-            } else if (
-              (content?.type === 'output_text' || content?.type === 'text') &&
-              typeof content?.text?.value === 'string'
-            ) {
-              textChunks.push(content.text.value);
-            }
-          }
-        }
-      }
-
-      if (textChunks.length > 0) {
-        console.log('[AgentService] Extracted text chunks:', textChunks.length);
-        return {
-          content: textChunks.join('\n').trim()
-        };
-      }
-    }
-
-    console.error('[AgentService] No text output found in response');
-    console.error('[AgentService] Full response:', JSON.stringify(response, null, 2).substring(0, 2000));
-    throw new Error('Agent response contained no text output');
   }
 
   async runSingleVisionInteraction(config: {
@@ -353,11 +343,10 @@ export class AgentServiceClient {
     agentVersion: string;
     model?: string;
   }): Promise<AgentResponse> {
-    const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2025-04-01-preview';
+    const openAIClient = this.projectClient.getOpenAIClient();
 
-    const openAIClient = await this.projectClient.getAzureOpenAIClient({
-      apiVersion
-    });
+    // Create a conversation first
+    const conversation = await openAIClient.conversations.create();
 
     const inputContent: any[] = [
       {
@@ -377,6 +366,7 @@ export class AgentServiceClient {
     try {
       response = await openAIClient.responses.create(
         {
+          conversation: conversation.id,
           input: [
             {
               role: 'user',
@@ -388,7 +378,6 @@ export class AgentServiceClient {
           body: {
             agent: {
               name: config.agentName,
-              version: config.agentVersion,
               type: 'agent_reference'
             }
           }
@@ -400,9 +389,10 @@ export class AgentServiceClient {
         throw error;
       }
 
-      const fallbackModel = config.model || process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1';
+      const fallbackModel = config.model || process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4';
 
       response = await openAIClient.responses.create({
+        conversation: conversation.id,
         model: fallbackModel,
         input: [
           {

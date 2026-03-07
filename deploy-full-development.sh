@@ -1254,7 +1254,7 @@ fi
 
 # Deploy to Static Web App
 echo "Deploying frontend files..."
-swa deploy ./out --deployment-token="$DEPLOYMENT_TOKEN" --env development || {
+swa deploy ./out --deployment-token="$DEPLOYMENT_TOKEN" --env production || {
     echo -e "${YELLOW}⚠ SWA deployment failed, but continuing...${NC}"
 }
 

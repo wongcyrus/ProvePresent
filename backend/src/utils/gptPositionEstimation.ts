@@ -152,7 +152,7 @@ async function callPositionEstimationAgent(
     imageUrls: imageUrls.map((img) => img.url),
     agentName: positionAgentName,
     agentVersion: positionAgentVersion,
-    model: process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1'
+    model: process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4'
   });
 
   context.log('Position estimation agent-reference run completed');

@@ -181,7 +181,8 @@ ProvePresent uses Azure Bicep for Infrastructure as Code (IaC), providing declar
 **Model Deployments**:
 | Deployment | Model | Version | Capacity | Purpose |
 |------------|-------|---------|----------|---------|
-| gpt-4.1 | gpt-4.1 | 2025-04-14 | 50K TPM | Quiz generation |
+| gpt-5.4 | gpt-5.4 | 2026-03-05 | 200K TPM (dev), 2M TPM (prod) | Quiz generation, vision analysis, agents |
+| gpt-4.1 | gpt-4.1 | 2025-04-14 | 50K TPM | Fallback model (dev only) |
 | gpt-4.1-vision | gpt-4.1 | 2025-04-14 | 1K TPM | Slide analysis |
 | gpt-5.2-chat | gpt-5.2-chat | 2026-02-10 | 100K TPM | Advanced agents |
 

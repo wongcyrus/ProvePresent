@@ -33,10 +33,17 @@ param gpt52ChatModelName = 'gpt-5.2-chat'
 param gpt52ChatModelVersion = '2026-02-10'
 param deployGpt52ChatModel = false
 
+// Enable GPT-5.4 deployment for dev (latest model)
+param gpt54DeploymentName = 'gpt-5.4'
+param gpt54ModelName = 'gpt-5.4'
+param gpt54ModelVersion = '2026-03-05'
+param deployGpt54Model = true
+
 // Single deployment with adequate capacity for dev
 param gpt4Capacity = 50
 param gpt4VisionCapacity = 1
 param gpt52ChatCapacity = 50
+param gpt54Capacity = 200  // 200K TPM for dev
 
 // OTP SMTP settings (read from environment; no secrets committed)
 param otpSmtpHost = readEnvironmentVariable('OTP_SMTP_HOST', 'smtp.gmail.com')

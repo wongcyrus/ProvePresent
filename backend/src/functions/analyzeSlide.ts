@@ -101,7 +101,7 @@ export async function analyzeSlide(
     // Call Azure OpenAI vision-capable chat API
     const openaiEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const openaiKey = process.env.AZURE_OPENAI_KEY;
-    const openaiDeployment = process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1';
+    const openaiDeployment = process.env.AZURE_OPENAI_VISION_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4';
 
     if (!openaiEndpoint) {
       throw new Error('Azure OpenAI endpoint not configured');

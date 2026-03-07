@@ -23,15 +23,23 @@ param gpt4VisionDeploymentName = 'gpt-4o-vision'
 param gpt4VisionModelName = 'gpt-4o'
 param gpt4VisionModelVersion = '2024-08-06'  // GPT-4o has built-in vision
 param deployVisionModel = false
+param deployGpt4Model = false  // Disable GPT-4 in favor of GPT-5.4
 param gpt52ChatDeploymentName = 'gpt-5.2-chat'
 param gpt52ChatModelName = 'gpt-5.2-chat'
 param gpt52ChatModelVersion = '2026-02-10'
 param deployGpt52ChatModel = false
 
+// Enable GPT-5.4 deployment for production (latest model)
+param gpt54DeploymentName = 'gpt-5.4'
+param gpt54ModelName = 'gpt-5.4'
+param gpt54ModelVersion = '2026-03-05'
+param deployGpt54Model = true
+
 // Production capacity settings
 param gpt4Capacity = 10  // 10K TPM (not deployed but kept for compatibility)
 param gpt4VisionCapacity = 10  // 10K TPM
 param gpt52ChatCapacity = 100  // 100K TPM for production workload
+param gpt54Capacity = 2000  // 2M TPM for production (matches your screenshot)
 
 // OTP SMTP settings (read from environment; no secrets committed)
 param otpSmtpHost = readEnvironmentVariable('OTP_SMTP_HOST', 'smtp.gmail.com')

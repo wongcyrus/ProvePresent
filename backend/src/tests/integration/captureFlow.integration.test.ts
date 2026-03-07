@@ -17,7 +17,7 @@ process.env.AzureWebJobsStorage = 'AccountName=devstoreaccount1;AccountKey=Eby8v
 process.env.SIGNALR_CONNECTION_STRING = 'Endpoint=https://test.service.signalr.net;AccessKey=dummykey;Version=1.0;';
 process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com/';
 process.env.AZURE_OPENAI_KEY = 'test-key';
-process.env.AZURE_OPENAI_DEPLOYMENT = 'gpt-5.2-chat';
+process.env.AZURE_OPENAI_DEPLOYMENT = 'gpt-5.4';
 
 import { initiateImageCapture } from '../../functions/initiateImageCapture';
 import { notifyImageUpload } from '../../functions/notifyImageUpload';

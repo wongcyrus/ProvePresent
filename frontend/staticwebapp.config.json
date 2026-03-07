@@ -104,16 +104,5 @@
   "platform": {
     "apiRuntime": "node:20"
   },
-  "trailingSlash": "auto",
-  "auth": {
-    "identityProviders": {
-      "azureActiveDirectory": {
-        "registration": {
-          "openIdIssuer": "https://8d7e7129-267c-4ef8-b977-e744f7018b45.ciamlogin.com/8d7e7129-267c-4ef8-b977-e744f7018b45/v2.0",
-          "clientIdSettingName": "AAD_CLIENT_ID",
-          "clientSecretSettingName": "AAD_CLIENT_SECRET"
-        }
-      }
-    }
-  }
+  "trailingSlash": "auto"
 }

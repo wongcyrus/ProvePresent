@@ -18,7 +18,7 @@ import * as df from 'durable-functions';
 process.env.AzureWebJobsStorage = 'AccountName=devstoreaccount1;AccountKey=test;DefaultEndpointsProtocol=http;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;';
 process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com/';
 process.env.AZURE_OPENAI_KEY = 'test-key';
-process.env.AZURE_OPENAI_DEPLOYMENT = 'gpt-5.2-chat';
+process.env.AZURE_OPENAI_DEPLOYMENT = 'gpt-5.4';
 
 // Mock dependencies
 jest.mock('../../utils/captureStorage');

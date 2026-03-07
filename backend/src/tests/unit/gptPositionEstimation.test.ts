@@ -37,7 +37,7 @@ describe('GPT Position Estimation - Overlapping Batches', () => {
     // Mock environment variables
     process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
     process.env.AZURE_OPENAI_KEY = 'test-key';
-    process.env.AZURE_OPENAI_VISION_DEPLOYMENT = 'gpt-5.2-chat';
+    process.env.AZURE_OPENAI_VISION_DEPLOYMENT = 'gpt-5.4';
   });
 
   describe('Single Batch (≤10 students)', () => {

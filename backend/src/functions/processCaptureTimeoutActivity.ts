@@ -200,7 +200,7 @@ export async function processCaptureTimeoutActivity(
         positions: JSON.stringify(estimationOutput.positions),
         analysisNotes: estimationOutput.analysisNotes,
         analyzedAt: new Date().toISOString(),
-        gptModel: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1',
+        gptModel: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4',
         gptTokensUsed: 0 // Could be populated from GPT response if needed
       };
       

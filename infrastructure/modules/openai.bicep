@@ -44,7 +44,19 @@ param gpt52ChatModelName string = 'gpt-5.2-chat'
 param gpt52ChatModelVersion string = '2026-02-10'
 
 @description('Deploy GPT-5.2-chat model (preview - most advanced model, supported by agents)')
-param deployGpt52ChatModel bool = true
+param deployGpt52ChatModel bool = false
+
+@description('GPT-5.4 model deployment name')
+param gpt54DeploymentName string = 'gpt-5.4'
+
+@description('GPT-5.4 model name')
+param gpt54ModelName string = 'gpt-5.4'
+
+@description('GPT-5.4 model version')
+param gpt54ModelVersion string = '2026-03-05'
+
+@description('Deploy GPT-5.4 model (latest model with highest capabilities)')
+param deployGpt54Model bool = true
 
 @description('GPT-4 deployment capacity (TPM in thousands)')
 param gpt4Capacity int = 10
@@ -54,6 +66,9 @@ param gpt4VisionCapacity int = 10
 
 @description('GPT-5.2-chat deployment capacity (TPM in thousands)')
 param gpt52ChatCapacity int = 250
+
+@description('GPT-5.4 deployment capacity (TPM in thousands)')
+param gpt54Capacity int = 200
 
 @description('Default model for agents (format: "model, version" e.g. "gpt-4o, 2024-11-20")')
 param defaultAgentModel string = 'gpt-4o, 2024-11-20' // Recommended for eastus2, no registration required
@@ -175,6 +190,33 @@ resource gpt52ChatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
 }
 
 // ============================================================================
+// GPT-5.4 DEPLOYMENT (latest model with highest capabilities)
+// ============================================================================
+
+resource gpt54Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-04-01-preview' = if (deployGpt54Model) {
+  parent: openAI
+  name: gpt54DeploymentName
+  sku: {
+    name: 'GlobalStandard'
+    capacity: gpt54Capacity
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: gpt54ModelName
+      version: gpt54ModelVersion
+    }
+  }
+  dependsOn: deployGpt52ChatModel ? [
+    gpt52ChatDeployment
+  ] : (deployVisionModel ? [
+    gpt4VisionDeployment
+  ] : (deployGpt4Model ? [
+    gpt4Deployment
+  ] : []))
+}
+
+// ============================================================================
 // NOTE: Foundry Projects and Agent Creation
 // ============================================================================
 // The Foundry project is now created via Bicep above.
@@ -251,6 +293,9 @@ output gpt4VisionDeploymentName string = deployVisionModel ? gpt4VisionDeploymen
 
 @description('GPT-5.2-chat deployment name (if deployed)')
 output gpt52ChatDeploymentName string = deployGpt52ChatModel ? gpt52ChatDeployment.name : ''
+
+@description('GPT-5.4 deployment name (if deployed)')
+output gpt54DeploymentName string = deployGpt54Model ? gpt54Deployment.name : ''
 
 @description('Agent instructions for quiz question generator')
 output agentInstructions string = agentInstructions
