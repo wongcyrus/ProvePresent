@@ -53,6 +53,31 @@ Hosting:      Azure Static Web Apps
 
 ### Deploy to Azure
 
+#### Recommended CDKTF path
+
+1. **Prepare environment config**
+   ```bash
+   cd infrastructure/cdktf
+   cp .env.staging.example .env.staging
+   # edit .env.staging with your environment values
+   ```
+
+2. **Run full deployment**
+   ```bash
+   ./deploy-full.sh staging
+   ```
+
+This runs the full working deployment flow:
+- creates or verifies the resource group and Static Web App prerequisite
+- deploys infrastructure with CDKTF
+- publishes the backend
+- deploys the frontend to the SWA production environment
+- creates Foundry agents and updates Function App settings
+
+See **[CDKTF Infrastructure Runbook](infrastructure/cdktf/README.md)** for environment details and full instructions.
+
+#### Original Bicep path
+
 1. **Setup JWT configuration**
    ```bash
    ./setup-jwt-config.sh
@@ -69,7 +94,7 @@ Hosting:      Azure Static Web Apps
    ./deploy-full-production.sh
    ```
 
-See **[Quick Start Guide](QUICK_START.md)** for complete instructions.
+See **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** for both deployment paths.
 
 ### Local Development
 
@@ -88,7 +113,7 @@ npm install
 ```
 ├── backend/           # Azure Functions (44+ endpoints)
 ├── frontend/          # Next.js application
-├── infrastructure/    # Bicep IaC templates
+├── infrastructure/    # Bicep and CDKTF IaC
 ├── docs/
 │   ├── architecture/  # System design
 │   ├── deployment/    # Deploy guides
@@ -102,6 +127,7 @@ npm install
 
 - **[Getting Started](GETTING_STARTED.md)** - Setup guide
 - **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** - Azure deployment
+- **[CDKTF Runbook](infrastructure/cdktf/README.md)** - CDKTF full deployment path
 - **[System Architecture](docs/architecture/SYSTEM_ARCHITECTURE.md)** - Technical design
 - **[Infrastructure](docs/architecture/INFRASTRUCTURE_BICEP.md)** - Bicep modules
 - **[Full Index](DOCUMENTATION_INDEX.md)** - All docs
@@ -140,4 +166,4 @@ MIT
 
 ---
 
-**Last Updated**: March 6, 2026
+**Last Updated**: July 28, 2026

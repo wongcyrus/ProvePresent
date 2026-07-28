@@ -52,6 +52,7 @@
 | Document | Description |
 |----------|-------------|
 | [DEPLOYMENT_GUIDE.md](docs/deployment/DEPLOYMENT_GUIDE.md) | Full deployment instructions |
+| [infrastructure/cdktf/README.md](infrastructure/cdktf/README.md) | CDKTF infrastructure runbook and full deploy script |
 | [AGENT_SETUP.md](docs/deployment/AGENT_SETUP.md) | Azure AI agent configuration |
 | [BACKEND_AUTH_MIGRATION.md](docs/deployment/BACKEND_AUTH_MIGRATION.md) | JWT authentication migration |
 | [DEV_SCRIPT_MIGRATION_COMPLETE.md](docs/deployment/DEV_SCRIPT_MIGRATION_COMPLETE.md) | Development script migration |
@@ -106,4 +107,4 @@ Historical documentation preserved in `docs/archive/`:
 
 ---
 
-**Last Updated**: March 9, 2026
+**Last Updated**: July 28, 2026
