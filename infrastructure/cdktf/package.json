@@ -1,0 +1,35 @@
+{
+  "name": "provepresent-cdktf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Parallel CDKTF implementation for ProvePresent Azure infrastructure",
+  "scripts": {
+    "build": "tsc --pretty false",
+    "synth": "cdktf synth",
+    "synth:dev": "cdktf synth dev",
+    "synth:staging": "cdktf synth staging",
+    "synth:prod": "cdktf synth prod",
+    "diff:dev": "cdktf diff dev",
+    "diff:staging": "cdktf diff staging",
+    "diff:prod": "cdktf diff prod",
+    "deploy:dev": "cdktf deploy dev --auto-approve",
+    "deploy:staging": "cdktf deploy staging --auto-approve",
+    "deploy:prod": "cdktf deploy prod --auto-approve",
+    "full-deploy:dev": "bash ./deploy-full.sh dev",
+    "full-deploy:staging": "bash ./deploy-full.sh staging",
+    "full-deploy:prod": "bash ./deploy-full.sh prod",
+    "destroy:dev": "cdktf destroy dev --auto-approve",
+    "destroy:staging": "cdktf destroy staging --auto-approve",
+    "destroy:prod": "cdktf destroy prod --auto-approve"
+  },
+  "dependencies": {
+    "@cdktf/provider-azurerm": "^14.19.0",
+    "cdktf": "^0.21.0",
+    "constructs": "^10.4.2",
+    "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "cdktf-cli": "^0.21.0",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-**Last Updated**: March 9, 2026  
+**Last Updated**: July 28, 2026  
 **Status**: ✅ Live and Running
 
 > **Note**: Azure resources use the naming convention `qrattendance-*` for historical reasons. The project has been renamed to ProvePresent but existing Azure deployments retain the original resource names.
@@ -8,6 +8,8 @@
 ---
 
 ## Quick Start
+
+> **Recommended for the CDKTF path**: use `infrastructure/cdktf/deploy-full.sh <env>` for a complete end-to-end deployment. The older `deploy-full-production.sh` flow remains available for the Bicep-based path.
 
 ### First Time Setup
 
@@ -31,6 +33,21 @@ cp .otp-email-credentials.example .otp-email-credentials
 
 ```bash
 ./deploy-full-production.sh
+```
+
+### CDKTF Full Deployment
+
+```bash
+cd infrastructure/cdktf
+./deploy-full.sh staging
+```
+
+Equivalent npm scripts:
+
+```bash
+npm run full-deploy:dev
+npm run full-deploy:staging
+npm run full-deploy:prod
 ```
 
 ### Clean Up Everything
@@ -73,6 +90,15 @@ cp .otp-email-credentials.example .otp-email-credentials
 
 ## Deployment Process
 
+## Current Deployment Paths
+
+| Path | Entry point | Use when |
+|---|---|---|
+| Bicep | `./deploy-full-production.sh` / `./deploy-full-development.sh` | You want to keep using the original deployment scripts |
+| CDKTF | `infrastructure/cdktf/deploy-full.sh <env>` | You want the newer self-contained per-environment deployment flow |
+
+The CDKTF path is still multi-phase internally, but the orchestration script now runs the full sequence in one command.
+
 ### Infrastructure as Code (Bicep)
 
 The deployment uses Azure Bicep templates located in `infrastructure/`:
@@ -93,6 +119,25 @@ infrastructure/
 ```
 
 See [INFRASTRUCTURE_BICEP.md](../architecture/INFRASTRUCTURE_BICEP.md) for detailed module documentation.
+
+### Infrastructure as Code (CDKTF)
+
+The parallel CDKTF implementation lives in `infrastructure/cdktf/` and uses self-contained environment files:
+
+- `.env.dev`
+- `.env.staging`
+- `.env.prod`
+
+For a complete environment deployment, `deploy-full.sh` performs:
+
+1. resource group and Static Web App prerequisite creation/verification
+2. `cdktf synth` and `cdktf deploy`
+3. Terraform import of a pre-created resource group when required
+4. Function App auth normalization after SWA backend linking
+5. backend build and `func azure functionapp publish`
+6. frontend build and `swa deploy --env production`
+7. `create-agents.ts` execution and Function App AI setting updates
+8. live verification of the SWA root and `/api/auth/me`
 
 ### Authentication SKU Requirement
 
@@ -152,6 +197,19 @@ cp .otp-email-credentials.example .otp-email-credentials
    - Links Function App backend
 7. Configures SignalR CORS
 8. Verifies deployment health
+
+### CDKTF Complete Deployment Workflow
+
+```bash
+cd infrastructure/cdktf
+./deploy-full.sh prod
+```
+
+**Important details**:
+- SWA content must be deployed with `swa deploy --env production`
+- backend publish must be preceded by `npm run build`
+- a complete deployment includes all four Foundry agents, not just infrastructure and code
+- the SWA must exist before the backend link deployment runs
 
 **Step 3: Verify Deployment**
 ```bash
@@ -215,9 +273,14 @@ OTP_FROM_NAME=VTC Attendance
 
 Created by deployment script with agent references:
 ```bash
-AZURE_AI_PROJECT_ENDPOINT=https://openai-qrattendance-prod.cognitiveservices.azure.com/api/projects/openai-qrattendance-prod-project
-AZURE_AI_AGENT_NAME=quiz-question-generator
+AZURE_AI_PROJECT_ENDPOINT=https://openai-qrattendance-prod.services.ai.azure.com/api/projects/openai-qrattendance-prod-project
+AZURE_AI_AGENT_NAME=QuizQuestionGenerator
 AZURE_AI_AGENT_VERSION=1
+AZURE_AI_POSITION_AGENT_NAME=PositionEstimationAgent
+AZURE_AI_POSITION_AGENT_VERSION=1
+AZURE_AI_ANALYSIS_AGENT_NAME=ImageAnalysisAgent
+AZURE_AI_ANALYSIS_AGENT_VERSION=1
+# SlideAnalysisAgent must also exist in the Foundry project
 ```
 
 ---

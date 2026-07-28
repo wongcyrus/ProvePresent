@@ -1,13 +1,13 @@
 # Deployment Scripts Architecture
 
-**Last Updated**: March 5, 2026  
+**Last Updated**: July 28, 2026  
 **Version**: 3.0
 
 ---
 
 ## Overview
 
-ProvePresent uses comprehensive bash scripts for automated deployment. These scripts orchestrate Bicep infrastructure deployment, backend function deployment, frontend build/deploy, and post-deployment configuration.
+ProvePresent uses automated deployment entrypoints for both the original Bicep path and the newer CDKTF path. These entrypoints orchestrate infrastructure deployment, backend publish, frontend deploy, and post-deployment AI agent configuration.
 
 ## Script Hierarchy
 
@@ -19,6 +19,11 @@ ProvePresent uses comprehensive bash scripts for automated deployment. These scr
 │  • Fail-fast (no retry)       │  • Retry logic (4 attempts)                 │
 │  • Standard SWA SKU           │  • Standard SWA SKU                         │
 │  • Production parameters      │  • Development parameters                   │
+│                                                                             │
+│  infrastructure/cdktf/deploy-full.sh <env>                                 │
+│  • Self-contained .env.<env> config                                         │
+│  • Creates/verifies RG + SWA prerequisite                                   │
+│  • Runs synth/import/deploy/publish/deploy/create-agents/verify             │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
           ┌───────────────────────────┼───────────────────────────┐
@@ -142,6 +147,68 @@ Step 10: Save deployment info
 - Resource group: `rg-qr-attendance-dev`
 - More lenient error handling
 
+### infrastructure/cdktf/deploy-full.sh
+
+**Purpose**: Complete CDKTF-based deployment for `dev`, `staging`, or `prod`.
+
+**Usage**:
+```bash
+cd infrastructure/cdktf
+./deploy-full.sh staging
+```
+
+**Equivalent npm scripts**:
+```bash
+npm run full-deploy:dev
+npm run full-deploy:staging
+npm run full-deploy:prod
+```
+
+**Execution Flow**:
+
+```
+Step 1: Load .env.<env>
+    └── Validate required CDKTF variables
+    └── Require SignalR and SWA backend linking for full deployment
+
+Step 2: Ensure prerequisites
+    └── Create/verify resource group
+    └── Create/verify Static Web App
+    └── Ensure Standard SKU
+
+Step 3: Prepare CDKTF
+    └── npm install (if needed)
+    └── cdktf synth <env>
+    └── terraform init
+    └── Import resource group into state when pre-created
+
+Step 4: Deploy infrastructure
+    └── cdktf deploy <env> --auto-approve
+
+Step 5: Normalize Function App auth
+    └── Reset authsettingsV2 to the working anonymous configuration
+
+Step 6: Publish backend
+    └── backend npm install (if needed)
+    └── npm run build
+    └── func azure functionapp publish
+    └── Verify Azure indexed functions
+
+Step 7: Deploy frontend
+    └── frontend npm install (if needed)
+    └── npm run build
+    └── swa deploy --env production
+
+Step 8: Create agents
+    └── root npm install (if needed)
+    └── npx tsx create-agents.ts <rg> <openai> <project>
+    └── Apply Function App AI settings
+
+Step 9: Verify live app
+    └── Check SWA root
+    └── Check /api/auth/me
+```
+
 ---
 
 ## Infrastructure Deployment (infrastructure/deploy.sh)
@@ -213,11 +280,14 @@ OTP_APP_NAME=ProvePresent
 
 **Variables**:
 ```bash
-AZURE_AI_PROJECT_ENDPOINT=https://<openai>.cognitiveservices.azure.com/api/projects/<project>
-AZURE_AI_AGENT_NAME=quiz-question-generator
+AZURE_AI_PROJECT_ENDPOINT=https://<openai>.services.ai.azure.com/api/projects/<project>
+AZURE_AI_AGENT_NAME=QuizQuestionGenerator
 AZURE_AI_AGENT_VERSION=1
-AZURE_AI_POSITION_AGENT_NAME=seating-position-analyzer
+AZURE_AI_POSITION_AGENT_NAME=PositionEstimationAgent
 AZURE_AI_POSITION_AGENT_VERSION=1
+AZURE_AI_ANALYSIS_AGENT_NAME=ImageAnalysisAgent
+AZURE_AI_ANALYSIS_AGENT_VERSION=1
+# SlideAnalysisAgent must also exist in the Foundry project
 ```
 
 ---
@@ -232,10 +302,14 @@ npx tsx create-agents.ts <resource-group> <openai-name> <project-name>
 ```
 
 **Agents Created**:
-1. **quiz-question-generator** - Generates quiz questions from slides
-2. **seating-position-analyzer** - Analyzes seating positions from photos
+1. **QuizQuestionGenerator** - Generates quiz questions from slides
+2. **SlideAnalysisAgent** - Analyzes slide images into structured quiz context
+3. **PositionEstimationAgent** - Analyzes seating positions from photos
+4. **ImageAnalysisAgent** - Analyzes attendee images with custom prompts
 
 **Output**: Writes `.agent-config.env` with agent references.
+
+This is called automatically by `infrastructure/cdktf/deploy-full.sh` during the CDKTF full deployment path.
 
 ---
 

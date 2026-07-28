@@ -2,17 +2,18 @@
 
 ## Overview
 
-This project uses Azure AI Foundry Agents for AI-powered features. Three agents are configured:
+This project uses Azure AI Foundry Agents for AI-powered features. Four agents are configured:
 
 1. **QuizQuestionGenerator** - Generates quiz questions from lecture slides
-2. **PositionEstimationAgent** - Estimates attendee seating positions from photos
-3. **ImageAnalysisAgent** - Analyzes attendee images with custom prompts
+2. **SlideAnalysisAgent** - Analyzes slide images into structured quiz context
+3. **PositionEstimationAgent** - Estimates attendee seating positions from photos
+4. **ImageAnalysisAgent** - Analyzes attendee images with custom prompts
 
 ## Agent Creation
 
 ### Automated Setup (Recommended)
 
-The `create-agents.ts` script automatically creates all three agents:
+The `create-agents.ts` script automatically creates all four agents:
 
 ```bash
 # Get resource information
@@ -26,7 +27,7 @@ npx tsx create-agents.ts $RESOURCE_GROUP $OPENAI_NAME $PROJECT_NAME
 
 The script will:
 1. Verify Azure AI Foundry project exists
-2. Create all three agents with proper configurations
+2. Create all four agents with proper configurations
 3. Generate `.agent-config.env` with agent references
 4. Optionally update Function App settings
 
@@ -119,6 +120,32 @@ Instructions: |
   }
 ```
 
+#### Slide Analysis Agent
+
+```yaml
+Name: SlideAnalysisAgent
+Model: gpt-4o or gpt-5.4
+Instructions: |
+  You are a slide analysis AI. Your ONLY job is to analyze a presentation slide image and return valid JSON.
+
+  CRITICAL RULES:
+  1. DO NOT repeat or echo the user's message
+  2. DO NOT include any explanatory text before or after the JSON
+  3. ONLY return the JSON object, nothing else
+
+  JSON FORMAT (return EXACTLY this structure):
+  {
+    "topic": "Main topic or concept (1-2 words)",
+    "title": "Slide title if visible",
+    "keyPoints": ["Key point 1", "Key point 2"],
+    "codeExamples": [],
+    "formulas": [],
+    "difficulty": "BEGINNER" | "INTERMEDIATE" | "ADVANCED",
+    "subject": "Subject area",
+    "summary": "Brief 1-2 sentence summary"
+  }
+```
+
 #### Image Analysis Agent
 
 ```yaml
@@ -168,6 +195,9 @@ AZURE_AI_PROJECT_ENDPOINT=https://{openai-resource}.services.ai.azure.com/api/pr
 AZURE_AI_AGENT_NAME=QuizQuestionGenerator
 AZURE_AI_AGENT_VERSION=1
 
+# Slide Analysis Agent
+# Hardcoded in backend as SlideAnalysisAgent, so it must exist in the project
+
 # Position Estimation Agent
 AZURE_AI_POSITION_AGENT_NAME=PositionEstimationAgent
 AZURE_AI_POSITION_AGENT_VERSION=1
@@ -186,6 +216,20 @@ AZURE_OPENAI_VISION_DEPLOYMENT=gpt-4o
 ## Deployment Integration
 
 The deployment scripts automatically handle agent setup:
+
+### CDKTF Full Deployment
+
+```bash
+cd infrastructure/cdktf
+./deploy-full.sh staging
+```
+
+This flow:
+1. deploys CDKTF infrastructure
+2. publishes the backend
+3. deploys the frontend to the SWA production environment
+4. runs `create-agents.ts`
+5. updates the Function App with the generated AI agent settings
 
 ### Development Deployment
 ```bash
@@ -217,6 +261,7 @@ cat .agent-config.env
 # AZURE_AI_PROJECT_ENDPOINT=https://...
 # AZURE_AI_AGENT_NAME=QuizQuestionGenerator
 # AZURE_AI_AGENT_VERSION=1
+# SlideAnalysisAgent must also exist in the Foundry project
 # AZURE_AI_POSITION_AGENT_NAME=PositionEstimationAgent
 # AZURE_AI_POSITION_AGENT_VERSION=1
 # AZURE_AI_ANALYSIS_AGENT_NAME=ImageAnalysisAgent
@@ -238,7 +283,7 @@ az functionapp config appsettings list \
 1. Go to [Azure AI Foundry](https://ai.azure.com)
 2. Select your project
 3. Navigate to "Agents"
-4. Verify all three agents are listed
+4. Verify all four agents are listed
 
 ## Troubleshooting
 
@@ -282,7 +327,7 @@ az functionapp config appsettings list \
 2. **Monitor Usage**: Track agent calls in Application Insights
 3. **Update Instructions**: Modify agent instructions in portal, then update version
 4. **Test Before Deploy**: Test agents in Azure AI Foundry before deploying
-5. **Backup Config**: Keep `.agent-config.env` in version control (without secrets)
+5. **Keep Config Fresh**: Regenerate `.agent-config.env` when agents are recreated; do not rely on stale local copies
 
 ## Cost Optimization
 
@@ -300,4 +345,4 @@ az functionapp config appsettings list \
 
 ---
 
-**Last Updated**: March 7, 2026
+**Last Updated**: July 28, 2026

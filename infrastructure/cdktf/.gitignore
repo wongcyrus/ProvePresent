@@ -1,0 +1,17 @@
+cdktf.out/
+.terraform/
+.terraform.lock.hcl
+dist/
+node_modules/
+.env
+.env.*
+!.env.dev.example
+!.env.staging.example
+!.env.prod.example
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*.override.tf
+*.override.tf.json
