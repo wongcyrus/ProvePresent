@@ -134,6 +134,29 @@ PROJECT_NAME="${OPENAI_NAME}-project"
 SIGNALR_NAME="signalr-${CDKTF_BASE_NAME}-${ENVIRONMENT}"
 SUBSCRIPTION_ID="${ARM_SUBSCRIPTION_ID:-$(az account show --query id -o tsv)}"
 
+purge_soft_deleted_openai_account() {
+  if [ "${CDKTF_DEPLOY_AZURE_OPENAI:-}" != "true" ]; then
+    return
+  fi
+
+  local deleted_count
+  deleted_count="$(az cognitiveservices account list-deleted \
+    --subscription "$SUBSCRIPTION_ID" \
+    --query "[?name=='${OPENAI_NAME}' && location=='${LOCATION}'] | length(@)" \
+    -o tsv)"
+
+  if [ "${deleted_count:-0}" -gt 0 ]; then
+    print_warn "Purging soft-deleted Azure OpenAI account: ${OPENAI_NAME}"
+    az cognitiveservices account purge \
+      --subscription "$SUBSCRIPTION_ID" \
+      --location "$LOCATION" \
+      --resource-group "$RESOURCE_GROUP_NAME" \
+      --name "$OPENAI_NAME" \
+      --only-show-errors \
+      >/dev/null
+  fi
+}
+
 ensure_prerequisites() {
   print_info "Ensuring resource group exists: $RESOURCE_GROUP_NAME"
   az group create \
@@ -346,6 +369,7 @@ verify_live_app() {
 
 main() {
   print_info "Starting full CDKTF deployment for ${ENVIRONMENT}"
+  purge_soft_deleted_openai_account
   ensure_prerequisites
   prepare_cdktf
   deploy_cdktf
